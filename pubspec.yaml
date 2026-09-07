@@ -27,6 +27,8 @@ dependencies:
   intl: ^0.20.2
   # Efficient network image loading and caching
   cached_network_image: ^3.4.1
+  # Google Fonts for typography system
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stagesync/theme/theme.dart';
 
 final GoRouter _router = GoRouter(
   initialLocation: '/',
@@ -29,13 +30,7 @@ class StageSyncApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'StageSync',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.light,
-        ),
-      ),
+      theme: StageSyncTheme.light,
       routerConfig: _router,
     );
   }
