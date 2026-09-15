@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stagesync/theme/app_colors.dart';
+import 'package:stagesync/widgets/common/loading_indicator.dart';
 
 /// A standardized primary action button for StageSync.
 ///
@@ -38,15 +39,10 @@ class PrimaryButton extends StatelessWidget {
     Widget buttonChild;
 
     if (isLoading) {
-      buttonChild = SizedBox(
-        width: 22,
-        height: 22,
-        child: CircularProgressIndicator(
-          strokeWidth: 2.5,
-          valueColor: AlwaysStoppedAnimation<Color>(
-            onPressed == null ? AppColors.textSubtle : effectiveFgColor,
-          ),
-        ),
+      buttonChild = const LoadingIndicator(
+        size: 22,
+        strokeWidth: 2.5,
+        message: null,
       );
     } else if (icon != null) {
       buttonChild = Row(

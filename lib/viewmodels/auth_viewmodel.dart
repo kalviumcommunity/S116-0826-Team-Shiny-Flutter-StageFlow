@@ -11,7 +11,11 @@ class AuthViewModel extends ChangeNotifier {
     required UserService userService,
   })  : _authService = authService,
         _userService = userService {
+    isLoading = true;
     _authSubscription = _authService.authStateChanges.listen((user) async {
+      await _profileSubscription?.cancel();
+      _profileSubscription = null;
+
       if (user == null) {
         currentUser = null;
         isLoading = false;

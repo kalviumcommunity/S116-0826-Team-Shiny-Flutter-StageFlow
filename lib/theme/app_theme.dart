@@ -34,7 +34,7 @@ class StageSyncTheme {
       ),
 
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surfaceWhite,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -98,18 +98,22 @@ class StageSyncTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceWhite,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.surfaceBorder, width: 1),
+          borderSide:
+              const BorderSide(color: AppColors.surfaceBorder, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.surfaceBorder, width: 1),
+          borderSide:
+              const BorderSide(color: AppColors.surfaceBorder, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.spotlightAmber, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.spotlightAmber, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
