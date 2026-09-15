@@ -7,8 +7,10 @@ class UserModel {
     required this.role,
     this.photoURL,
     required this.createdAt,
+    this.uid,
   });
 
+  final String? uid;
   final String name;
   final String email;
   final String role;
@@ -17,6 +19,7 @@ class UserModel {
 
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
     return UserModel(
+      uid: id,
       name: map['name'] as String? ?? '',
       email: map['email'] as String? ?? '',
       role: map['role'] as String? ?? 'cast',
