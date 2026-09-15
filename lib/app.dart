@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:stagesync/services/auth_service.dart';
 import 'package:stagesync/services/user_service.dart';
+import 'package:stagesync/screens/auth/login_screen.dart';
+import 'package:stagesync/screens/auth/signup_screen.dart';
 import 'package:stagesync/screens/splash/splash_screen.dart';
 import 'package:stagesync/theme/theme.dart';
 import 'package:stagesync/viewmodels/auth_viewmodel.dart';
@@ -78,20 +80,14 @@ GoRouter _buildRouter(AuthViewModel authViewModel) {
         path: '/login',
         name: 'login',
         builder: (BuildContext context, GoRouterState state) {
-          return const _PlaceholderRouteScreen(
-            title: 'Login',
-            subtitle: 'Login UI comes in the next prompt.',
-          );
+          return const LoginScreen();
         },
       ),
       GoRoute(
         path: '/signup',
         name: 'signup',
         builder: (BuildContext context, GoRouterState state) {
-          return const _PlaceholderRouteScreen(
-            title: 'Sign Up',
-            subtitle: 'Sign up UI comes in the next prompt.',
-          );
+          return const SignupScreen();
         },
       ),
       GoRoute(
