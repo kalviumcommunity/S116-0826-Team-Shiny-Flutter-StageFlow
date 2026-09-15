@@ -43,7 +43,8 @@ class EventModel {
       type: map['type'] as String? ?? '',
       venue: venue,
       venueKey: map['venueKey'] as String? ?? normalizeVenue(venue),
-      castIds: List<String>.from((map['castIds'] as List?) ?? const <dynamic>[]),
+      castIds:
+          List<String>.from((map['castIds'] as List?) ?? const <dynamic>[]),
       notes: map['notes'] as String? ?? '',
     );
   }

@@ -35,7 +35,8 @@ class ProductionModel {
       ),
       directorId: map['directorId'] as String? ?? '',
       imageURL: map['imageURL'] as String?,
-      memberIds: List<String>.from((map['memberIds'] as List?) ?? const <dynamic>[]),
+      memberIds:
+          List<String>.from((map['memberIds'] as List?) ?? const <dynamic>[]),
       createdAt: _coerceDateTime(
         map['createdAt'],
         fallback: DateTime.fromMillisecondsSinceEpoch(0),
