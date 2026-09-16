@@ -1,7 +1,7 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:stagesync/app.dart';
-import 'package:stagesync/firebase_options.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'app/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,19 +9,23 @@ Future<void> main() async {
   bool isFirebaseInitialized = false;
   String? initErrorMessage;
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    isFirebaseInitialized = true;
-  } catch (e, stackTrace) {
-    debugPrint('Firebase initialization failed: $e');
-    debugPrint('StackTrace: $stackTrace');
-    initErrorMessage = e.toString();
+  // Only initialize Firebase on Android/Native. Keep Web (Chrome) for pure UI testing.
+  if (!kIsWeb) {
+    try {
+      // Assuming Android relies on google-services.json
+      await Firebase.initializeApp();
+      isFirebaseInitialized = true;
+    } catch (e, stackTrace) {
+      debugPrint('Firebase initialization failed on Android: $e');
+      debugPrint('StackTrace: $stackTrace');
+      initErrorMessage = e.toString();
+    }
+  } else {
+    debugPrint('Web Mode detected: Bypassing Firebase to allow UI testing.');
   }
 
-  if (isFirebaseInitialized) {
-    runApp(const StageSyncApp());
+  if (isFirebaseInitialized || kIsWeb) {
+    runApp(StageFlowApp(isFirebaseInitialized: isFirebaseInitialized));
   } else {
     runApp(FirebaseInitErrorApp(errorMessage: initErrorMessage));
   }

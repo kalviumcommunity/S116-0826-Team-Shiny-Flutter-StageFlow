@@ -34,7 +34,7 @@ class StageSyncTheme {
       ),
 
       // Card Theme
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: AppColors.surfaceWhite,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -142,3 +142,4 @@ class StageSyncTheme {
     );
   }
 }
+

@@ -37,7 +37,7 @@ class ErrorBanner extends StatelessWidget {
         color: AppColors.conflictRedContainer,
         borderRadius: BorderRadius.circular(10.0),
         border: Border.all(
-          color: AppColors.conflictRed.withValues(alpha: 0.4),
+          color: AppColors.conflictRed.withOpacity(0.4),
           width: 1.0,
         ),
       ),
@@ -118,3 +118,4 @@ class ErrorBanner extends StatelessWidget {
     );
   }
 }
+
