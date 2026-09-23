@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../app/theme/app_colors.dart';
-import '../../app/theme/app_typography.dart';
+import 'package:provider/provider.dart';
 import '../../models/event.dart';
 import '../../repositories/stageflow_repository.dart';
-import '../../utils/date_formatter.dart';
-import '../../widgets/section_header.dart';
-import '../../widgets/stageflow_card.dart';
-import '../../widgets/timeline_block.dart';
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/event_card.dart';
+import '../../widgets/empty_state.dart';
 
 class MasterScheduleScreen extends StatefulWidget {
   const MasterScheduleScreen({super.key});
@@ -18,15 +17,9 @@ class MasterScheduleScreen extends StatefulWidget {
 
 class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
   final _repository = MockStageFlowRepository();
-  List<ScheduleEvent> _events = [];
+  List<ScheduleEvent> _allEvents = [];
   bool _isLoading = true;
-  int _selectedDayIndex = 0; // Today
   String _selectedTypeFilter = 'All';
-
-  final List<DateTime> _weekDays = List.generate(
-    7,
-    (index) => DateTime.now().add(Duration(days: index)),
-  );
 
   @override
   void initState() {
@@ -38,159 +31,240 @@ class _MasterScheduleScreenState extends State<MasterScheduleScreen> {
     final events = await _repository.getEvents();
     if (mounted) {
       setState(() {
-        _events = events;
+        _allEvents = events;
         _isLoading = false;
       });
     }
   }
 
+  Map<String, List<ScheduleEvent>> _groupEvents(List<ScheduleEvent> events) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+
+    final Map<String, List<ScheduleEvent>> groups = {
+      'TODAY': [],
+      'TOMORROW': [],
+      'UPCOMING': [],
+      'PAST CALLS': [],
+    };
+
+    for (final event in events) {
+      final eventDate = DateTime(event.startTime.year, event.startTime.month, event.startTime.day);
+      if (eventDate.isAtSameMomentAs(today)) {
+        groups['TODAY']!.add(event);
+      } else if (eventDate.isAtSameMomentAs(tomorrow)) {
+        groups['TOMORROW']!.add(event);
+      } else if (eventDate.isAfter(tomorrow)) {
+        groups['UPCOMING']!.add(event);
+      } else {
+        groups['PAST CALLS']!.add(event);
+      }
+    }
+
+    return groups;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selectedDate = _weekDays[_selectedDayIndex];
+    final theme = Theme.of(context);
+    final auth = context.watch<AuthViewModel>();
+    final isDirector = auth.currentUser?.role.toLowerCase() == 'director';
 
-    final filteredEvents = _events.where((e) {
-      final matchesType = _selectedTypeFilter == 'All' ||
-          (_selectedTypeFilter == 'Conflicts' ? e.hasConflict : e.type == _selectedTypeFilter);
-      return matchesType;
+    final filteredEvents = _allEvents.where((e) {
+      if (_selectedTypeFilter == 'All') return true;
+      if (_selectedTypeFilter == 'Conflicts') return e.hasConflict;
+      return e.type.toLowerCase() == _selectedTypeFilter.toLowerCase();
     }).toList();
 
+    // Sort by startTime
+    filteredEvents.sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    final grouped = _groupEvents(filteredEvents);
+
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Master Schedule'),
+        title: const Text('Production Schedule'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => context.go('/schedule/create'),
-          ),
+          if (isDirector)
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'New Event',
+              onPressed: () => context.go('/schedule/create'),
+            ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Weekday Selector Bar
-                  SizedBox(
-                    height: 70,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _weekDays.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final day = _weekDays[index];
-                        final isSelected = index == _selectedDayIndex;
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedDayIndex = index;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: 60,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.deepNavy : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected ? AppColors.deepNavy : Theme.of(context).extension<StageFlowThemeExtension>()!.borderSubtle,
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  DateFormatter.formatShortDate(day).split(',')[0].toUpperCase(),
-                                  style: AppTypography.metadata.copyWith(
-                                    color: isSelected ? AppColors.stageRed : Theme.of(context).colorScheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${day.day}',
-                                  style: AppTypography.headlineMd.copyWith(
-                                    color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Filter Chips
-                  SingleChildScrollView(
+          : Column(
+              children: [
+                // Filter Chips Row
+                Container(
+                  color: theme.colorScheme.surface,
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: ['All', 'Conflicts', 'Rehearsal', 'Tech Call', 'Fitting'].map((type) {
-                        final isSelected = _selectedTypeFilter == type;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: FilterChip(
-                            label: Text(type),
-                            selected: isSelected,
-                            selectedColor: type == 'Conflicts' ? AppColors.conflictRed : AppColors.deepNavy,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 12,
-                            ),
-                            backgroundColor: Colors.white,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedTypeFilter = type;
-                              });
-                            },
-                          ),
-                        );
-                      }).toList(),
+                      children: [
+                        _buildFilterChip('All Calls', 'All', theme),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Conflicts', 'Conflicts', theme, isAlert: true),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Rehearsals', 'Rehearsal', theme),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Tech Calls', 'Tech Call', theme),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('Fittings', 'Fitting', theme),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                ),
+                const Divider(height: 1),
 
-                  SectionHeader(
-                    title: DateFormatter.formatFullDate(selectedDate),
-                    actionLabel: '+ Add Event',
-                    onActionPressed: () => context.go('/schedule/create'),
-                  ),
-                  const SizedBox(height: 12),
+                Expanded(
+                  child: filteredEvents.isEmpty
+                      ? EmptyState(
+                          icon: Icons.calendar_today_outlined,
+                          title: 'No upcoming calls',
+                          subtitle: isDirector
+                              ? 'Schedule rehearsals, blocking sessions, or performances with live conflict detection.'
+                              : 'You have no scheduled calls or rehearsals under this filter.',
+                          actionLabel: isDirector ? 'Schedule Call' : null,
+                          onAction: isDirector
+                              ? () => context.go('/schedule/create')
+                              : null,
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          children: [
+                            if (grouped['TODAY']!.isNotEmpty) ...[
+                              _buildSectionHeader('TODAY', grouped['TODAY']!.length, theme),
+                              ...grouped['TODAY']!.map((e) => _buildEventItem(context, e, isDirector)),
+                            ],
+                            if (grouped['TOMORROW']!.isNotEmpty) ...[
+                              _buildSectionHeader('TOMORROW', grouped['TOMORROW']!.length, theme),
+                              ...grouped['TOMORROW']!.map((e) => _buildEventItem(context, e, isDirector)),
+                            ],
+                            if (grouped['UPCOMING']!.isNotEmpty) ...[
+                              _buildSectionHeader('UPCOMING', grouped['UPCOMING']!.length, theme),
+                              ...grouped['UPCOMING']!.map((e) => _buildEventItem(context, e, isDirector)),
+                            ],
+                            if (grouped['PAST CALLS']!.isNotEmpty) ...[
+                              _buildSectionHeader('PAST CALLS', grouped['PAST CALLS']!.length, theme),
+                              ...grouped['PAST CALLS']!.map((e) => _buildEventItem(context, e, isDirector)),
+                            ],
+                          ],
+                        ),
+                ),
+              ],
+            ),
+      floatingActionButton: isDirector && _allEvents.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go('/schedule/create'),
+              backgroundColor: AppTheme.burgundy,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('New Call', style: TextStyle(fontWeight: FontWeight.w600)),
+            )
+          : null,
+    );
+  }
 
-                  // Schedule List
-                  Expanded(
-                    child: filteredEvents.isEmpty
-                        ? const StageFlowCard(
-                            child: Center(
-                              child: Text('No events found for selected filters.'),
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: filteredEvents.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final event = filteredEvents[index];
-                              return TimelineBlock(
-                                event: event,
-                                onTap: () => context.go('/schedule/events/${event.id}'),
-                              );
-                            },
-                          ),
-                  ),
-                ],
+  Widget _buildFilterChip(String label, String filterValue, ThemeData theme, {bool isAlert = false}) {
+    final isSelected = _selectedTypeFilter == filterValue;
+    
+    Color selectedBgColor = isAlert ? const Color(0xFFBA1A1A).withOpacity(0.12) : theme.colorScheme.primary.withOpacity(0.12);
+    Color selectedTextColor = isAlert ? const Color(0xFFBA1A1A) : theme.colorScheme.primary;
+    Color borderColor = isSelected 
+        ? (isAlert ? const Color(0xFFBA1A1A) : theme.colorScheme.primary) 
+        : theme.colorScheme.outline;
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) {
+        setState(() {
+          _selectedTypeFilter = filterValue;
+        });
+      },
+      selectedColor: selectedBgColor,
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? selectedTextColor : theme.colorScheme.onSurface,
+      ),
+      side: BorderSide(
+        color: borderColor,
+        width: 1,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, int count, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/schedule/create'),
-        backgroundColor: AppColors.stageRed,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Create Event', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: theme.colorScheme.outline.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventItem(BuildContext context, ScheduleEvent event, bool isDirector) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: InkWell(
+        onTap: () => context.go('/schedule/events/${event.id}'),
+        borderRadius: BorderRadius.circular(12),
+        child: EventCard(
+          event: event,
+          isDirector: isDirector,
+          onEdit: isDirector ? () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Edit event not implemented in mock.')),
+            );
+          } : null,
+          onDelete: isDirector ? () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Delete event not implemented in mock.')),
+            );
+          } : null,
+        ),
       ),
     );
   }

@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:stagesync/theme/app_colors.dart';
-import 'package:stagesync/viewmodels/auth_viewmodel.dart';
-import 'package:stagesync/widgets/common/error_banner.dart';
-import 'package:stagesync/widgets/common/primary_button.dart';
+import 'package:go_router/go_router.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+import '../../utils/validators.dart';
+
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
-  String _role = 'cast';
+  String _selectedRole = 'director'; // 'director' or 'cast'
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -32,196 +32,265 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  bool _isValidEmail(String value) {
-    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value.trim());
-  }
+  Future<void> _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _signUp() async {
-    final form = _formKey.currentState;
-    if (form == null || !form.validate()) {
-      return;
-    }
-
-    FocusScope.of(context).unfocus();
-    final authViewModel = context.read<AuthViewModel>();
-    await authViewModel.signUp(
+    final auth = context.read<AuthViewModel>();
+    final success = await auth.signUp(
       _nameController.text.trim(),
       _emailController.text.trim(),
       _passwordController.text,
-      _role,
+      _selectedRole,
     );
+
+    if (success && mounted) {
+      context.go('/home');
+    } else if (mounted && auth.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage!),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authViewModel = context.watch<AuthViewModel>();
+    final theme = Theme.of(context);
+    final auth = context.watch<AuthViewModel>();
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.vertical - 64,
-              ),
-              child: IntrinsicHeight(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text('Create Account'),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Primary Role',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Role selection cards
+                Row(
                   children: [
-                    Text(
-                      'Create your account',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryCharcoal,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Join StageSync',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppColors.textMuted,
-                          ),
-                    ),
-                    const SizedBox(height: 32),
-                    if (authViewModel.errorMessage != null) ...[
-                      ErrorBanner(
-                        message: authViewModel.errorMessage!,
-                        isDismissible: false,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextFormField(
-                            controller: _nameController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Name',
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedRole = 'director'),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _selectedRole == 'director'
+                                ? theme.colorScheme.primary.withOpacity(0.08)
+                                : theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _selectedRole == 'director'
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.outline,
+                              width: _selectedRole == 'director' ? 1.5 : 1,
                             ),
-                            validator: (value) {
-                              if ((value ?? '').trim().isEmpty) {
-                                return 'Name is required.';
-                              }
-                              return null;
-                            },
                           ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                            ),
-                            validator: (value) {
-                              final text = value?.trim() ?? '';
-                              if (text.isEmpty) {
-                                return 'Email is required.';
-                              }
-                              if (!_isValidEmail(text)) {
-                                return 'Enter a valid email address.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: true,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                            ),
-                            validator: (value) {
-                              final text = value ?? '';
-                              if (text.isEmpty) {
-                                return 'Password is required.';
-                              }
-                              if (text.length < 6) {
-                                return 'Password must be at least 6 characters.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: true,
-                            textInputAction: TextInputAction.done,
-                            onFieldSubmitted: (_) => _signUp(),
-                            decoration: const InputDecoration(
-                              labelText: 'Confirm Password',
-                            ),
-                            validator: (value) {
-                              final text = value ?? '';
-                              if (text.isEmpty) {
-                                return 'Please confirm your password.';
-                              }
-                              if (text != _passwordController.text) {
-                                return 'Passwords do not match.';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Role',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 8),
-                          SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment<String>(
-                                value: 'director',
-                                label: Text('Director'),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.movie_creation_outlined,
+                                size: 18,
+                                color: _selectedRole == 'director'
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
                               ),
-                              ButtonSegment<String>(
-                                value: 'cast',
-                                label: Text('Cast Member'),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Director',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: _selectedRole == 'director'
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface,
+                                ),
                               ),
                             ],
-                            selected: <String>{_role},
-                            showSelectedIcon: false,
-                            onSelectionChanged: (Set<String> selection) {
-                              if (selection.isEmpty) {
-                                return;
-                              }
-                              setState(() {
-                                _role = selection.first;
-                              });
-                            },
                           ),
-                          const SizedBox(height: 24),
-                          PrimaryButton(
-                            label: 'Create Account',
-                            isLoading: authViewModel.isLoading,
-                            onPressed: _signUp,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => context.go('/login'),
-                        child: const Text('Already have an account? Sign In'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedRole = 'cast'),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _selectedRole == 'cast'
+                                ? theme.colorScheme.primary.withOpacity(0.08)
+                                : theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _selectedRole == 'cast'
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.outline,
+                              width: _selectedRole == 'cast' ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                size: 18,
+                                color: _selectedRole == 'cast'
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Cast Member',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: _selectedRole == 'cast'
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 20),
+
+                // Full Name Input
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    hintText: 'Jane Doe',
+                    prefixIcon: Icon(Icons.person_outline, size: 20),
+                  ),
+                  validator: (v) => Validators.required(v, 'Please enter your name'),
+                ),
+                const SizedBox(height: 16),
+
+                // Email Input
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'jane@theatre.edu',
+                    prefixIcon: Icon(Icons.email_outlined, size: 20),
+                  ),
+                  validator: Validators.email,
+                ),
+                const SizedBox(height: 16),
+
+                // Password Input
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  validator: Validators.password,
+                ),
+                const SizedBox(height: 16),
+
+                // Confirm Password Input
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _handleSignUp(),
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    ),
+                  ),
+                  validator: (v) => Validators.confirmPassword(v, _passwordController.text),
+                ),
+                const SizedBox(height: 28),
+
+                // Create Account button
+                ElevatedButton(
+                  onPressed: auth.isLoading ? null : _handleSignUp,
+                  child: auth.isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('Create Account'),
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Already have an account?',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton(
+                      onPressed: () => context.pop(),
+                      child: Text(
+                        'Sign In',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
