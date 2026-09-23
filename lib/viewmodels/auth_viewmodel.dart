@@ -173,4 +173,48 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> updateProfile({
+    String? name,
+    String? photoURL,
+  }) async {
+    final updates = <String, dynamic>{};
+    if (name != null) updates['name'] = name;
+    if (photoURL != null) updates['photoURL'] = photoURL;
+    return updateUserProfile(updates);
+  }
+
+  Future<bool> updateUserProfile(Map<String, dynamic> data) async {
+    final uid = currentUser?.uid ?? _authService.currentUserId;
+    if (uid == null) {
+      isLoading = false;
+      errorMessage = 'No authenticated user found.';
+      notifyListeners();
+      return false;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _userService.updateUserProfile(
+        uid: uid,
+        data: data,
+      );
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } on ArgumentError catch (e) {
+      errorMessage = e.message?.toString() ?? 'Invalid profile update data.';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      errorMessage = 'Failed to update profile: $e';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }

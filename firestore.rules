@@ -62,7 +62,11 @@ service cloud.firestore {
         // assignment dropdowns and roster lists without exposing non-cast data.
         (isAuthenticated() && resource.data.role == 'cast');
       allow create: if isUser(userId);
-      allow update, delete: if isUser(userId);
+      // Users can only update their own profile, and only editable fields (name, photoURL).
+      // Protected fields (role, email, createdAt, uid) cannot be modified.
+      allow update: if isUser(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL']);
+      allow delete: if isUser(userId);
     }
 
     // --- Productions Collection ---
