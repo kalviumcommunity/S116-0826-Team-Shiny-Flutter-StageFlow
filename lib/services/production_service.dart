@@ -41,12 +41,15 @@ class ProductionService {
   Stream<List<ProductionModel>> watchMyProductions(String uid) {
     return _productionsCollection
         .where('memberIds', arrayContains: uid)
-        .orderBy('startDate')
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map(ProductionModel.fromDoc)
-              .toList(growable: false),
+          (snapshot) {
+            final productions = snapshot.docs
+                .map(ProductionModel.fromDoc)
+                .toList(growable: true);
+            productions.sort((a, b) => a.startDate.compareTo(b.startDate));
+            return List<ProductionModel>.unmodifiable(productions);
+          },
         );
   }
 

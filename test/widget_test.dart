@@ -4,15 +4,27 @@ import 'package:stagesync/app.dart';
 import 'package:stagesync/theme/theme.dart';
 import 'package:stagesync/widgets/common/common.dart';
 
+import 'package:mocktail/mocktail.dart';
+import 'package:stagesync/viewmodels/auth_viewmodel.dart';
+
+class MockAuthViewModel extends Mock implements AuthViewModel {}
+
 void main() {
-  testWidgets('StageSyncApp boots with StageSyncTheme and displays initial text',
+  testWidgets(
+      'StageSyncApp boots with StageSyncTheme and displays initial text',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const StageSyncApp());
+    final mockAuthVm = MockAuthViewModel();
+    when(() => mockAuthVm.isLoading).thenReturn(true);
+    when(() => mockAuthVm.currentUser).thenReturn(null);
+    when(() => mockAuthVm.errorMessage).thenReturn(null);
+
+    await tester.pumpWidget(StageSyncApp(authViewModel: mockAuthVm));
     expect(find.text('StageSync'), findsOneWidget);
   });
 
   group('PrimaryButton Widget Tests', () {
-    testWidgets('renders label and triggers onPressed', (WidgetTester tester) async {
+    testWidgets('renders label and triggers onPressed',
+        (WidgetTester tester) async {
       bool pressed = false;
       await tester.pumpWidget(
         MaterialApp(

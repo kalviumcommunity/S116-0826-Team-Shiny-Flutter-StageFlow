@@ -83,7 +83,8 @@ class StageSyncTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primaryCharcoal,
-          side: const BorderSide(color: AppColors.surfaceBorder, width: 1.5),
+          side: const BorderSide(
+              color: Color.fromARGB(255, 41, 102, 223), width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),

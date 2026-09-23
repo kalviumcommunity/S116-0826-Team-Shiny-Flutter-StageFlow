@@ -58,7 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.vertical - 64,
+                    MediaQuery.of(context).padding.vertical -
+                    64,
               ),
               child: IntrinsicHeight(
                 child: Column(
@@ -68,10 +69,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'StageSync',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryCharcoal,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryCharcoal,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(

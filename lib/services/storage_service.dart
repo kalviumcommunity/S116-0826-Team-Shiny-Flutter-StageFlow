@@ -3,17 +3,18 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class StorageService {
-  StorageService({FirebaseStorage? storage})
-      : _storage = storage ?? FirebaseStorage.instance;
+  StorageService({FirebaseStorage? storage}) : _storage = storage;
 
-  final FirebaseStorage _storage;
+  final FirebaseStorage? _storage;
 
-  Future<String> uploadProductionPoster(
+  FirebaseStorage? get storage => _storage;
+
+  Future<String?> uploadProductionPoster(
     String prodId,
     File imageFile,
   ) async {
-    final ref = _storage.ref('posters/$prodId.jpg');
-    await ref.putFile(imageFile);
-    return ref.getDownloadURL();
+    // Firebase Storage upload is bypassed for now to allow production creation
+    // without requiring an active Storage bucket.
+    return null;
   }
 }

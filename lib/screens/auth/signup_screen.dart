@@ -67,7 +67,8 @@ class _SignupScreenState extends State<SignupScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.vertical - 64,
+                    MediaQuery.of(context).padding.vertical -
+                    64,
               ),
               child: IntrinsicHeight(
                 child: Column(
@@ -77,10 +78,11 @@ class _SignupScreenState extends State<SignupScreen> {
                     Text(
                       'Create your account',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primaryCharcoal,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryCharcoal,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -177,7 +179,9 @@ class _SignupScreenState extends State<SignupScreen> {
                           const SizedBox(height: 20),
                           Text(
                             'Role',
-                            style: Theme.of(context).textTheme.titleMedium
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 8),

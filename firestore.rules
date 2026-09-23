@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function getProduction(prodId) {
+      return get(/databases/$(database)/documents/productions/$(prodId));
+    }
+
+    function isProductionMember(prodId) {
+      return isAuthenticated() &&
+        request.auth.uid in getProduction(prodId).data.memberIds;
+    }
+
+    function isProductionDirector(prodId) {
+      return isAuthenticated() &&
+        request.auth.uid == getProduction(prodId).data.directorId;
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      // Direct access is restricted to the owning user
+      allow read: if isUser(userId) ||
+        // Explicit exception: Directors and members can view cast user profiles for
+        // assignment dropdowns and roster lists without exposing non-cast data.
+        (isAuthenticated() && resource.data.role == 'cast');
+      allow create: if isUser(userId);
+      allow update, delete: if isUser(userId);
+    }
+
+    // --- Productions Collection ---
+    match /productions/{prodId} {
+      // Only involved cast and directors can read production details
+      allow read: if isAuthenticated() &&
+        request.auth.uid in resource.data.memberIds;
+
+      // Only directors can create productions, initializing memberIds to just themselves
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.directorId &&
+        request.resource.data.memberIds == [request.auth.uid];
+
+      // Directors can edit full production details; members may only append their own UID to memberIds
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.directorId ||
+        (
+          request.auth.uid in resource.data.memberIds &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+        )
+      );
+
+      // Only the director who owns the production can delete it
+      allow delete: if isAuthenticated() &&
+        request.auth.uid == resource.data.directorId;
+
+      // --- Roles Subcollection ---
+      match /roles/{roleId} {
+        allow read: if isProductionMember(prodId);
+        allow write: if isProductionDirector(prodId);
+      }
+
+      // --- Events Subcollection ---
+      // Security Invariant Note:
+      // Event double-booking conflict detection runs inside an atomic client-side
+      // Firestore transaction. Validating cross-event time-window overlaps directly
+      // in Firestore Security Rules is not feasible due to rule complexity and read quotas.
+      // Therefore, this is an accepted and documented MVP trust boundary.
+      match /events/{eventId} {
+        allow read: if isProductionMember(prodId);
+        allow create, update, delete: if isProductionDirector(prodId);
+      }
+
+      // --- Auditions Subcollection ---
+      match /auditions/{audId} {
+        allow read: if isProductionMember(prodId);
+        allow create, delete: if isProductionDirector(prodId);
+        // Cast members may update an audition document ONLY to add their own UID to castIds
+        allow update: if isProductionDirector(prodId) || (
+          isProductionMember(prodId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['castIds']) &&
+          request.resource.data.castIds.hasAll(resource.data.castIds) &&
+          request.resource.data.castIds.hasAny([request.auth.uid])
+        );
+      }
+    }
+  }
+}

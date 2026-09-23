@@ -1,37 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:stagesync/services/auth_service.dart';
-import 'package:stagesync/services/user_service.dart';
+import 'package:stagesync/models/event_model.dart';
 import 'package:stagesync/screens/auth/login_screen.dart';
 import 'package:stagesync/screens/auth/signup_screen.dart';
+import 'package:stagesync/screens/event/create_edit_event_screen.dart';
+import 'package:stagesync/screens/home/home_shell.dart';
+import 'package:stagesync/screens/production/create_edit_production_screen.dart';
+import 'package:stagesync/screens/production/production_details_screen.dart';
+import 'package:stagesync/screens/profile/profile_screen.dart';
 import 'package:stagesync/screens/splash/splash_screen.dart';
+import 'package:stagesync/services/audition_service.dart';
+import 'package:stagesync/services/auth_service.dart';
+import 'package:stagesync/services/event_service.dart';
+import 'package:stagesync/services/production_service.dart';
+import 'package:stagesync/services/role_service.dart';
+import 'package:stagesync/services/storage_service.dart';
+import 'package:stagesync/services/user_service.dart';
 import 'package:stagesync/theme/theme.dart';
+import 'package:stagesync/viewmodels/auditions_viewmodel.dart';
 import 'package:stagesync/viewmodels/auth_viewmodel.dart';
+import 'package:stagesync/viewmodels/events_viewmodel.dart';
+import 'package:stagesync/viewmodels/productions_viewmodel.dart';
+import 'package:stagesync/viewmodels/roles_viewmodel.dart';
+import 'package:stagesync/viewmodels/schedule_viewmodel.dart';
 
 class StageSyncApp extends StatelessWidget {
-  const StageSyncApp({super.key});
+  final AuthViewModel? authViewModel;
+  final ProductionsViewModel? productionsViewModel;
+  final RolesViewModel? rolesViewModel;
+  final EventsViewModel? eventsViewModel;
+  final AuditionsViewModel? auditionsViewModel;
+  final ScheduleViewModel? scheduleViewModel;
+
+  const StageSyncApp({
+    super.key,
+    this.authViewModel,
+    this.productionsViewModel,
+    this.rolesViewModel,
+    this.eventsViewModel,
+    this.auditionsViewModel,
+    this.scheduleViewModel,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthViewModel>(
-          create: (_) => AuthViewModel(
-            authService: AuthService(),
-            userService: UserService(),
-          ),
+          create: (_) =>
+              authViewModel ??
+              AuthViewModel(
+                authService: AuthService(),
+                userService: UserService(),
+              ),
+        ),
+        ChangeNotifierProvider<ProductionsViewModel>(
+          create: (_) =>
+              productionsViewModel ??
+              ProductionsViewModel(
+                productionService: ProductionService(),
+                storageService: StorageService(),
+              ),
+        ),
+        ChangeNotifierProvider<RolesViewModel>(
+          create: (_) =>
+              rolesViewModel ??
+              RolesViewModel(
+                roleService: RoleService(),
+              ),
+        ),
+        ChangeNotifierProvider<EventsViewModel>(
+          create: (_) =>
+              eventsViewModel ??
+              EventsViewModel(
+                eventService: EventService(),
+              ),
+        ),
+        ChangeNotifierProvider<AuditionsViewModel>(
+          create: (_) =>
+              auditionsViewModel ??
+              AuditionsViewModel(
+                auditionService: AuditionService(),
+              ),
+        ),
+        ChangeNotifierProvider<ScheduleViewModel>(
+          create: (_) =>
+              scheduleViewModel ??
+              ScheduleViewModel(
+                productionService: ProductionService(),
+                eventService: EventService(),
+              ),
         ),
       ],
       child: Builder(
         builder: (BuildContext context) {
-          final authViewModel = context.read<AuthViewModel>();
+          final effectiveAuthVm = context.read<AuthViewModel>();
 
           return MaterialApp.router(
             title: 'StageSync',
             debugShowCheckedModeBanner: false,
             theme: StageSyncTheme.light,
-            routerConfig: _buildRouter(authViewModel),
+            routerConfig: _buildRouter(effectiveAuthVm),
           );
         },
       ),
@@ -72,75 +142,69 @@ GoRouter _buildRouter(AuthViewModel authViewModel) {
       GoRoute(
         path: '/splash',
         name: 'splash',
-        builder: (BuildContext context, GoRouterState state) {
-          return const SplashScreen();
-        },
+        builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (BuildContext context, GoRouterState state) {
-          return const LoginScreen();
-        },
+        builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
         path: '/signup',
         name: 'signup',
-        builder: (BuildContext context, GoRouterState state) {
-          return const SignupScreen();
-        },
+        builder: (context, state) => const SignupScreen(),
       ),
       GoRoute(
         path: '/home',
         name: 'home',
-        builder: (BuildContext context, GoRouterState state) {
-          return const _PlaceholderRouteScreen(
-            title: 'Home',
-            subtitle: 'Home UI comes in Prompt 10.',
+        builder: (context, state) => const HomeShell(),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/production/create',
+        name: 'createProduction',
+        builder: (context, state) => const CreateEditProductionScreen(),
+      ),
+      GoRoute(
+        path: '/production/edit/:prodId',
+        name: 'editProduction',
+        builder: (context, state) {
+          final prodId = state.pathParameters['prodId'];
+          return CreateEditProductionScreen(prodId: prodId);
+        },
+      ),
+      GoRoute(
+        path: '/production/:prodId',
+        name: 'productionDetails',
+        builder: (context, state) {
+          final prodId = state.pathParameters['prodId']!;
+          return ProductionDetailsScreen(prodId: prodId);
+        },
+      ),
+      GoRoute(
+        path: '/production/:prodId/event/create',
+        name: 'createEvent',
+        builder: (context, state) {
+          final prodId = state.pathParameters['prodId']!;
+          return CreateEditEventScreen(prodId: prodId);
+        },
+      ),
+      GoRoute(
+        path: '/production/:prodId/event/edit',
+        name: 'editEvent',
+        builder: (context, state) {
+          final prodId = state.pathParameters['prodId']!;
+          final initialEvent = state.extra as EventModel?;
+          return CreateEditEventScreen(
+            prodId: prodId,
+            initialEvent: initialEvent,
           );
         },
       ),
     ],
   );
-}
-
-class _PlaceholderRouteScreen extends StatelessWidget {
-  const _PlaceholderRouteScreen({
-    required this.title,
-    required this.subtitle,
-  });
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

@@ -60,6 +60,8 @@ class AuthService {
         return 'No account was found for that email.';
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
+      case 'invalid-credential':
+        return 'Incorrect email or password. Please try again.';
       case 'too-many-requests':
         return 'Too many attempts. Please wait a moment and try again.';
       default:
