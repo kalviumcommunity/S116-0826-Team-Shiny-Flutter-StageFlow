@@ -1,192 +1,418 @@
-# StageSync
+# 🎭 StageSync
 
-> A Flutter mobile application for coordinating theatre productions, auditions, cast assignments, rehearsal schedules, venue bookings, availability, and scheduling conflicts.
+> **A real-time theatre production management platform for productions, casting, auditions, schedules, venues, and conflict-free coordination.**
 
-**Squad:** S116  
-**Team:** Team Shiny  
-**Tech Stack:** Flutter + Dart + Firebase  
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter\&logoColor=white)](https://flutter.dev/)
+[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart\&logoColor=white)](https://dart.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-Backend-FFCA28?logo=firebase\&logoColor=black)](https://firebase.google.com/)
+[![Firestore](https://img.shields.io/badge/Cloud%20Firestore-Database-FFCA28?logo=firebase\&logoColor=black)](https://firebase.google.com/docs/firestore)
+[![Authentication](https://img.shields.io/badge/Firebase%20Auth-Authentication-FFCA28?logo=firebase\&logoColor=black)](https://firebase.google.com/docs/auth)
+[![License](https://img.shields.io/badge/License-Educational-lightgrey)](#)
+
+**Squad:** S116
+**Team:** Team Shiny
 **Repository:** `S116-0826-Team-Shiny-Flutter-StageFlow`
 
-> **Naming note:** The supplied Product Requirements Document uses **StageSync** as the product name, while the team's repository and current UI use **StageFlow**. This README uses **StageFlow** as the project name and preserves the PRD terminology where relevant.
+---
+
+## ✨ What is StageSync?
+
+StageSync is a **Flutter-based theatre production management application** designed to bring the day-to-day coordination of theatre productions into one place.
+
+Regional theatre teams often manage productions through group chats, spreadsheets, phone calls, and scattered documents. As the number of productions grows, this makes it increasingly difficult to keep track of:
+
+* 🎬 Productions
+* 🎭 Roles and cast assignments
+* 🎤 Auditions
+* 📅 Rehearsals and performances
+* 🏛️ Venue bookings
+* 👥 Cast availability
+* ⚠️ Scheduling conflicts
+* 🔄 Real-time schedule changes
+
+StageSync centralizes these workflows into a single mobile application backed by **Firebase Authentication, Cloud Firestore, and Firebase Storage**.
+
+The goal is simple:
+
+> **Make theatre coordination organized, real-time, and conflict-aware.**
+
+The supplied PRD defines the MVP around production management, casting, event scheduling, auditions, authentication, real-time updates, and venue/cast conflict detection.
 
 ---
 
-## 📌 Project Overview
+## 🎯 The Problem
 
-Regional theatre groups often coordinate multiple productions through group chats and scattered documents. As productions increase, it becomes difficult to keep schedules synchronized, resulting in missed schedule changes, venue double-bookings, cast commitment conflicts, and no consolidated view of commitments.
+Theatre productions involve many moving parts and people.
 
-**StageFlow** centralizes the production workflow into one mobile application.
+A single production can have:
 
-The MVP focuses on:
+* Multiple actors and crew members
+* Multiple rehearsals
+* Different venues
+* Audition sessions
+* Performances
+* Changing schedules
+* Overlapping commitments
 
-- Productions
-- Auditions
-- Roles and characters
-- Cast assignments
-- Rehearsals and performances
-- Venue bookings
-- Cast availability
-- Schedule views
-- Conflict detection
-- Role-aware access
+When this information is distributed across conversations and documents, coordination becomes fragile.
 
-The supplied PRD defines Firebase Authentication, Cloud Firestore, Firebase Storage, real-time updates, and conflict prevention as core technical requirements. fileciteturn11file0
+### Common problems
 
----
+| Problem                                       | Consequence                   |
+| --------------------------------------------- | ----------------------------- |
+| Schedule changes shared across multiple chats | People miss updates           |
+| Two productions use the same venue            | Venue double-booking          |
+| An actor is assigned to overlapping events    | Cast conflict                 |
+| Auditions managed manually                    | Difficult attendance tracking |
+| Cast lists stored in different places         | Poor visibility               |
+| No central schedule                           | Difficult planning            |
 
-## 🎯 Problem Statement
+StageSync addresses these problems through a centralized production workflow and automated conflict detection.
 
-A regional theatre group manages auditions, rehearsal schedules, and cast assignments across several simultaneous productions. Coordination through group chats becomes difficult as productions increase.
-
-This can lead to:
-
-- Missed schedule changes.
-- Overlapping rehearsal or performance events.
-- Venue double-bookings.
-- Cast members being assigned to conflicting events.
-- No consolidated view of production commitments.
-
-StageFlow addresses these problems through a centralized theatre-management workflow.
+The project requirements explicitly identify missed schedule changes, overlapping events, venue double-bookings, and cast commitment conflicts as core coordination problems.
 
 ---
 
-## 👥 Target Users
+# 🚀 Core Features
 
-### Director — Primary User
+## 🔐 Authentication
 
-Directors manage productions and can create/edit productions, manage roles, assign cast members, create events and auditions, and monitor conflicts.
+Secure user authentication powered by Firebase Authentication.
 
-### Cast Member
-
-Cast members can view assigned productions and roles, view upcoming events, view their schedule, and sign up for auditions.
-
-### Admin — Stretch Goal
-
-An optional administrative role can manage users and roles if included in the stretch scope.
-
----
-
-## 🚀 MVP Features
-
-| Feature | Priority | Description |
-|---|---|---|
-| Authentication | MVP | Email/password sign-up, login, logout and persistent sessions |
-| Productions CRUD | MVP | Create, read, update and delete productions |
-| Roles / Characters | MVP | Create/edit roles and assign cast members |
-| Scheduling / Events | MVP | Create and manage rehearsals, performances and other events |
-| Venue Conflict Detection | MVP | Prevent overlapping events at the same venue and time |
-| Cast Conflict Detection | MVP | Detect overlapping events for selected cast members |
-| Auditions | MVP | Create auditions and allow cast members to sign up |
-| Home Dashboard | MVP | Show greeting, production information, counts and upcoming events |
-| Schedule View | MVP | View events by date or production |
-| Profile & Roles | MVP | Display user identity and role |
-| Admin Panel | Stretch | Manage users and roles |
-| Calendar Integration | Stretch | Optional Google Calendar integration |
-| Notifications | Stretch | Push notifications for schedule changes |
-| Search / Filter | Stretch | Search/filter productions and events |
-
-The feature priorities above follow the supplied PRD. fileciteturn11file0
+* Email/password sign-up
+* Login
+* Logout
+* Persistent authentication state
+* Role-aware application experience
+* Director / Cast Member roles
 
 ---
 
-## 📱 UI / UX
+## 🎬 Production Management
 
-The current StageFlow UI is mobile-first and follows a clean theatre-management SaaS direction.
+Directors can manage their productions from one place.
 
-### Core Screens
+### Production capabilities
+
+* Create productions
+* Edit productions
+* Delete productions
+* View production details
+* Define production dates
+* Add descriptions
+* Upload production poster images
+* View associated roles
+* View associated schedules
+
+Production data is stored in Cloud Firestore, while production images are stored in Firebase Storage.
+
+---
+
+## 🎭 Roles & Casting
+
+Manage the relationship between productions, characters, and performers.
+
+Directors can:
+
+* Create roles/characters
+* Edit roles
+* Assign cast members
+* View assigned performers
+* Identify unassigned roles
+
+Cast members can view their assigned roles and associated productions.
+
+---
+
+## 🎤 Auditions
+
+StageSync provides an integrated audition workflow.
+
+### Directors
+
+* Create auditions
+* Define audition date/time
+* Define venue
+* Specify what is being cast
+* View registered participants
+
+### Cast Members
+
+* Browse available auditions
+* View audition details
+* Sign up for auditions
+
+The PRD defines audition sign-ups through a Firestore-backed participant list.
+
+---
+
+# 📅 Scheduling
+
+StageSync provides a centralized schedule for production events.
+
+Supported event types include:
+
+* Rehearsals
+* Auditions
+* Performances
+* Other production events
+
+Each event can contain:
+
+```text
+Event
+├── Date
+├── Start Time
+├── End Time
+├── Type
+├── Venue
+├── Cast Members
+└── Notes
+```
+
+Events are displayed chronologically and can be viewed within productions or through the user's overall schedule.
+
+Firestore real-time listeners allow schedule information to update without requiring a manual refresh.
+
+---
+
+# ⚠️ Smart Conflict Detection
+
+> **One of StageSync's core product capabilities.**
+
+StageSync is designed to detect scheduling conflicts **before an event is saved**.
+
+### 🏛️ Venue conflicts
+
+The system checks whether another event is already using the selected venue during an overlapping time period.
+
+```text
+Create Event
+     │
+     ▼
+Check Venue
+     │
+     ▼
+Same venue + overlapping time?
+     │
+   ┌─┴─┐
+  YES  NO
+   │    │
+   ▼    ▼
+BLOCK  Continue
+ SAVE    │
+         ▼
+       Save
+```
+
+### 👤 Cast conflicts
+
+For every selected cast member, StageSync checks whether that person is already assigned to another overlapping event.
+
+```text
+Select Cast
+     │
+     ▼
+Find Existing Events
+     │
+     ▼
+Check Time Overlap
+     │
+   ┌─┴─┐
+  YES  NO
+   │    │
+   ▼    ▼
+ WARN  Continue
+```
+
+### Conflict information
+
+When a conflict occurs, the UI should clearly communicate:
+
+* **Who** is affected
+* **What** event conflicts
+* **When** the conflict occurs
+* **Where** it occurs
+* **What needs to change**
+
+The PRD specifies querying overlapping events and preventing conflicting venue/cast bookings from being saved.
+
+---
+
+# 🧠 Conflict Detection Logic
+
+The core scheduling rule is based on time overlap:
+
+```text
+Existing Event:
+[start₁ ───────── end₁]
+
+New Event:
+       [start₂ ───────── end₂]
+
+Conflict exists when:
+
+start₁ < end₂
+AND
+end₁ > start₂
+```
+
+StageSync applies this logic to:
+
+### Venue
+
+```text
+Same venue
+    +
+Same date
+    +
+Overlapping time
+    =
+Venue conflict
+```
+
+### Cast
+
+```text
+Same cast member
+    +
+Same date
+    +
+Overlapping time
+    =
+Cast conflict
+```
+
+The PRD proposes Firestore queries combined with transaction-based writes so that conflicting events are rejected rather than silently saved.
+
+---
+
+# 👥 User Roles
+
+StageSync is designed around role-aware access.
+
+| Role               | Primary Responsibilities                                     |
+| ------------------ | ------------------------------------------------------------ |
+| 🎬 **Director**    | Manage productions, roles, cast, events and auditions        |
+| 🎭 **Cast Member** | View productions, roles, schedules and sign up for auditions |
+| 🛠️ **Admin**      | User and role management — stretch scope                     |
+
+The supplied executive summary also identifies **Stage Manager** as a potential operational role for scheduling, venue management, attendance and conflict resolution. This role is part of the broader system vision but is not required for the core MVP.
+
+---
+
+# 📱 Application Screens
+
+The MVP is structured around a simple mobile-first navigation model.
+
+### Authentication
 
 1. Splash
 2. Login
 3. Sign Up
+
+### Main Application
+
 4. Home Dashboard
-5. Productions List
-6. Production Detail
-7. Roles / Characters
-8. Schedule / Events
+5. Productions
+6. Production Details
+7. Roles / Casting
+8. Schedule
 9. Create/Edit Production
 10. Create/Edit Role
 11. Create/Edit Event
-12. Auditions List
+12. Auditions
 13. Audition Sign-up
-14. Schedule — All Productions
-15. Profile
-16. Optional Admin Panel
+14. Profile
 
-Some screens may be implemented as tabs, dialogs, or sheets depending on the final Flutter UX. The PRD describes approximately 14–16 distinct views. fileciteturn11file0
+### Stretch
 
-### Current UI Baseline
+15. Admin / User Management
 
-The Stitch-generated UI establishes the visual baseline:
-
-- Light workspace surfaces.
-- Stage Red for primary actions and critical conflicts.
-- Compact cards.
-- Status chips.
-- Persistent bottom navigation.
-- Dashboard-first information hierarchy.
-- Clear conflict states.
-
-Reusable Flutter components should preserve this visual language across all screens.
+The PRD describes approximately 13–14 core screens with bottom navigation and production-specific workflows.
 
 ---
 
-## ⚠️ Conflict Detection
+# 🏠 Dashboard
 
-Conflict prevention is one of the core product capabilities.
+The Home dashboard is intended to provide an immediate overview of production activity.
 
-### Venue Conflict
+Depending on the user's role, it can surface:
 
-When creating an event, the application checks whether another event already uses the same venue on the same date and whether the start/end times overlap.
+* Greeting
+* Active productions
+* Cast counts
+* Upcoming events
+* Upcoming auditions
+* Production information
+* Schedule highlights
 
-```text
-Create Event
-     ↓
-Same venue + same date?
-     ↓
-Check overlapping times
-     ↓
-   Conflict?
-   /      \
- YES      NO
-  ↓         ↓
-Block     Save
-```
-
-### Cast Conflict
-
-For every selected cast member, the application checks existing events for that cast member on the same date and detects overlapping times.
+### Director view
 
 ```text
-Select Cast
-     ↓
-Find existing events
-     ↓
-Check same date + time overlap
-     ↓
-   Conflict?
-   /      \
- YES      NO
-  ↓         ↓
-Warn      Continue
+┌───────────────────────────────┐
+│ Good morning, Director        │
+│                               │
+│ My Productions                │
+│ ┌───────────────────────────┐ │
+│ │ Hamlet                     │ │
+│ │ 12 Cast · 4 Upcoming      │ │
+│ └───────────────────────────┘ │
+│                               │
+│ Upcoming Events               │
+│ • Rehearsal — 6:00 PM        │
+│ • Production Meeting — 8 PM  │
+└───────────────────────────────┘
 ```
 
-### Conflict UX
+### Cast view
 
-Every conflict should make it immediately clear:
+The cast experience prioritizes:
 
-- **Who** is affected.
-- **What** is conflicting.
-- **When** it occurs.
-- **Where** it occurs.
-- **What action** can resolve it.
-
-The PRD explicitly requires that conflicting events not be saved and describes Firestore transaction-based checking for venue and cast conflicts. fileciteturn11file0
+* Assigned productions
+* Assigned roles
+* Upcoming events
+* Auditions
+* Personal schedule
 
 ---
 
-## 🗃️ Firebase Data Model
+# 🏗️ Architecture
 
-The PRD defines a simple Firestore structure:
+StageSync follows a lightweight Flutter architecture designed to keep UI, business logic, and Firebase access separated.
+
+```text
+┌─────────────────────────────┐
+│         Flutter UI          │
+│ Screens + Widgets + Forms   │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│       State Management      │
+│     Provider / ChangeNotifier│
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│      Services / Repos       │
+│ Auth · Firestore · Storage  │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│           Firebase          │
+│ Auth · Firestore · Storage  │
+└─────────────────────────────┘
+```
+
+The PRD recommends **Provider + ChangeNotifier** for the MVP because the application does not require the additional complexity of Riverpod/BLoC.
+
+---
+
+# 🗃️ Firebase Data Model
+
+StageSync uses Cloud Firestore as its primary application database.
 
 ```text
 Firestore
@@ -195,7 +421,7 @@ Firestore
 │   ├── name
 │   ├── email
 │   ├── role
-│   └── photoUrl
+│   └── photoURL
 │
 └── productions/{productionId}
     ├── title
@@ -203,66 +429,135 @@ Firestore
     ├── startDate
     ├── endDate
     ├── directorId
-    ├── imageUrl
+    ├── imageURL
     │
     ├── roles/{roleId}
     │   ├── name
     │   └── assignedUserId
     │
     ├── events/{eventId}
+    │   ├── date
     │   ├── start
     │   ├── end
     │   ├── type
     │   ├── venue
-    │   └── castIds[]
+    │   ├── castIds[]
+    │   └── notes
     │
     └── auditions/{auditionId}
         ├── date
         ├── time
         ├── venue
-        ├── castingFor
         └── castIds[]
 ```
 
-Production poster images are stored in Firebase Storage, with the resulting download URL stored in the production document. fileciteturn11file0
+This structure keeps production-specific data grouped beneath its production while keeping users in a separate collection for authentication and assignment workflows.
 
 ---
 
-## 🔐 Authentication & Authorization
+# 🔥 Firebase Stack
 
-The MVP uses Firebase Authentication with email/password.
+| Service                      | Purpose                                         |
+| ---------------------------- | ----------------------------------------------- |
+| **Firebase Authentication**  | User registration, login and sessions           |
+| **Cloud Firestore**          | Productions, roles, events, auditions and users |
+| **Firebase Storage**         | Production poster/media storage                 |
+| **Firebase Cloud Messaging** | Notifications — stretch goal                    |
 
-### Authentication Flow
+The core MVP is intentionally Firebase-first to keep the backend simple while providing real-time updates and authentication.
+
+---
+
+# 🔐 Security & Authorization
+
+Firebase Authentication identifies users, while Firestore Security Rules enforce access boundaries.
+
+### Intended access model
 
 ```text
-Splash
-  ↓
-Check Firebase Auth State
-  ↓
-Authenticated?
- /          \
-YES          NO
- ↓            ↓
-Home        Login
-              ↓
-            Sign Up
+Authenticated User
+       │
+       ▼
+Read permitted data
+       │
+       ├── Director
+       │      └── Manage owned productions
+       │
+       └── Cast
+              └── View assigned data
+                  + audition participation
 ```
 
-The user's application role is stored in their Firestore user document.
+Examples:
 
-Expected roles:
+* Users can access their own profile.
+* Directors can create and manage their productions.
+* Only authorized users can modify roles/events.
+* Cast members cannot modify director-only production resources.
+* Protected resources require authentication.
 
-- `director`
-- `cast`
-- `admin` — optional/stretch
-
-The PRD specifies role-aware access, including director-only production management and authenticated access to appropriate production/event data. fileciteturn11file0
+The PRD provides a Firestore Rules outline based on the authenticated user's UID and production director ownership.
 
 ---
 
-## 🧱 Flutter Project Structure
+# 🎨 UI / UX Direction
 
-The project should keep UI, state, data models, repositories/services, and utilities separated.
+StageSync follows a clean, mobile-first theatre-management interface.
+
+### Design principles
+
+* Clear information hierarchy
+* Compact production cards
+* Strong schedule visibility
+* Status indicators
+* Clear empty states
+* Clear loading/error states
+* Immediate conflict feedback
+* Consistent navigation
+* Minimal interaction complexity
+
+### Visual language
+
+```text
+Primary
+Stage Red
+
+Workspace
+Soft Light / Near White
+
+Text
+Dark Navy
+
+States
+Green  → Available / Resolved
+Amber  → Attention
+Red    → Conflict / Critical
+```
+
+### Core reusable components
+
+```text
+AppScaffold
+AppBottomNavigation
+ProductionCard
+EventCard
+StatCard
+StatusChip
+ConflictCard
+ActivityItem
+SearchField
+FilterChip
+ConflictResolutionSheet
+```
+
+> **Design principle:**
+> StageSync should feel calm when everything is normal — and immediately obvious when something needs attention.
+
+---
+
+# 🧱 Project Structure
+
+The application follows a feature-oriented Flutter structure with reusable services and widgets.
 
 ```text
 lib/
@@ -301,14 +596,8 @@ lib/
 ├── screens/
 │   ├── splash/
 │   ├── auth/
-│   │   ├── login/
-│   │   └── signup/
 │   ├── home/
 │   ├── productions/
-│   │   ├── production_list/
-│   │   ├── production_detail/
-│   │   ├── create_edit_production/
-│   │   └── roles/
 │   ├── schedule/
 │   ├── auditions/
 │   ├── profile/
@@ -317,13 +606,11 @@ lib/
 ├── widgets/
 │   ├── app_scaffold.dart
 │   ├── app_bottom_navigation.dart
-│   ├── app_bar.dart
 │   ├── production_card.dart
 │   ├── event_card.dart
 │   ├── status_chip.dart
 │   ├── conflict_card.dart
-│   ├── stat_card.dart
-│   └── activity_item.dart
+│   └── stat_card.dart
 │
 ├── utils/
 │   ├── validators.dart
@@ -334,249 +621,325 @@ lib/
     └── app_constants.dart
 ```
 
-This structure is an implementation recommendation based on the PRD's separation of models, services, screens, widgets and utilities. The PRD specifically mentions Flutter state management using ChangeNotifier and Provider as a simple recommended approach. fileciteturn11file0
-
 ---
 
-## 🎨 Design System
-
-### Visual Direction
-
-```text
-Primary Accent
-Stage Red
-
-Workspace
-Soft Light / Near White
-
-Text
-Dark Navy
-
-Supporting States
-Green  → Available / Resolved
-Amber  → Attention / Tentative
-Red    → Conflict / Critical
-```
-
-### Reusable Components
-
-- `AppScaffold`
-- `AppBottomNavigation`
-- `ProductionCard`
-- `EventCard`
-- `StatCard`
-- `StatusChip`
-- `ConflictCard`
-- `ActivityItem`
-- `SearchField`
-- `FilterChip`
-- `ConflictResolutionSheet`
-
-### UX Principle
-
-> **StageFlow should feel calm when everything is normal and immediately obvious when something needs attention.**
-
----
-
-## 🛠️ Technology Stack
+# 🛠️ Tech Stack
 
 ### Frontend
 
-- Flutter
-- Dart
-- Material Design
+* **Flutter**
+* **Dart**
+* **Material Design**
+* **Provider / ChangeNotifier**
 
-### Backend / Cloud
+### Backend
 
-- Firebase Authentication
-- Cloud Firestore
-- Firebase Storage
-- Firebase Cloud Messaging — Stretch
+* **Firebase Authentication**
+* **Cloud Firestore**
+* **Firebase Storage**
+* **Firebase Cloud Messaging** — stretch
 
 ### Development
 
-- Git
-- GitHub
-- Pull Requests
-- Feature/documentation branches
+* Git
+* GitHub
+* Pull Requests
+* Flutter testing tools
+* Firebase Console
+* Firebase CLI / FlutterFire tooling
 
 ---
 
-## 🗓️ Development Roadmap
+# ⚙️ Getting Started
 
-The PRD defines an 8-week development roadmap. fileciteturn11file0
-
-| Week | Focus |
-|---|---|
-| 1 | Product definition, wireframes, Flutter setup and Firebase project |
-| 2 | Flutter scaffold, routing, bottom navigation and basic screens |
-| 3 | Forms, validation and authentication foundation |
-| 4 | Firebase Authentication and role handling |
-| 5 | Production data model, CRUD and production screens |
-| 6 | Event CRUD, Firestore real-time updates and Storage |
-| 7 | Roles, cast assignment, schedule conflict logic and auditions |
-| 8 | Testing, security rules, deployment preparation and demo |
-
----
-
-## 🧪 Testing Strategy
-
-### Unit Tests
-
-Test business logic such as:
-
-- Venue conflict detection.
-- Cast conflict detection.
-- Date/time validation.
-- Form validation.
-- Role logic.
-
-### Widget Tests
-
-Test UI behavior such as:
-
-- Login validation.
-- Correct navigation.
-- Production card rendering.
-- Conflict state rendering.
-
-### Acceptance Tests
-
-Important scenarios include:
-
-- Director creates a production.
-- Director creates a role and assigns a cast member.
-- Director creates an event.
-- Venue overlap is blocked.
-- Cast overlap is detected.
-- Cast member signs up for an audition.
-- Schedule updates are visible.
-- Unauthorized users cannot modify protected resources.
-
-The PRD explicitly calls for unit tests, widget tests and manual/acceptance scenarios covering these workflows. fileciteturn11file0
-
----
-
-## 🔒 Security
-
-Firestore Security Rules are part of the required project scope.
-
-The rules should enforce that:
-
-- Users can access their own user information.
-- Directors can manage their permitted productions.
-- Only authorized users can create/update protected resources.
-- Cast members cannot modify director-only resources.
-- Authentication is required for protected data.
-
-The PRD includes a Firestore Rules outline and specifically calls for testing rules to prevent unauthorized writes. fileciteturn11file0
-
----
-
-## 📦 Local Development Setup
-
-### Prerequisites
+## Prerequisites
 
 Install:
 
-- Flutter SDK
-- Git
-- Android Studio or another Android-capable development environment
-- Firebase CLI / FlutterFire tooling as required
+* Flutter SDK
+* Dart SDK
+* Git
+* Android Studio or another Android development environment
+* Firebase CLI / FlutterFire tooling
 
-### Verify Flutter
+Verify your Flutter installation:
 
 ```bash
 flutter doctor
 ```
 
-### Install dependencies
+---
+
+## 1. Clone the repository
+
+```bash
+git clone <YOUR_REPOSITORY_URL>
+cd S116-0826-Team-Shiny-Flutter-StageFlow
+```
+
+---
+
+## 2. Install dependencies
 
 ```bash
 flutter pub get
 ```
 
-### Run the app
+---
+
+## 3. Configure Firebase
+
+Connect the Flutter project to your Firebase project using FlutterFire.
+
+Your Firebase configuration should include the services required by the application:
+
+```text
+Firebase Authentication
+Cloud Firestore
+Firebase Storage
+```
+
+Do **not** commit private credentials, secrets, or environment-specific sensitive configuration.
+
+---
+
+## 4. Run the application
 
 ```bash
 flutter run
 ```
 
-### Run tests
+To select a specific device:
+
+```bash
+flutter devices
+flutter run -d <device-id>
+```
+
+---
+
+## 5. Run tests
 
 ```bash
 flutter test
 ```
 
-Firebase project configuration should be added during the Firebase integration phase and should not be committed with private credentials or secrets.
+Static analysis:
+
+```bash
+flutter analyze
+```
+
+Format the project:
+
+```bash
+dart format .
+```
 
 ---
 
-## 🌿 Git Workflow
+# 🧪 Testing Strategy
 
-`main` is the default branch.
+Testing focuses on the workflows that matter most to production coordination.
 
-### Branch Naming
+## Unit Tests
 
-Use focused branches:
+Test business logic such as:
+
+* Venue conflict detection
+* Cast conflict detection
+* Time overlap calculations
+* Date validation
+* Form validation
+* Role logic
+
+## Widget Tests
+
+Test:
+
+* Login validation
+* Navigation
+* Production cards
+* Event cards
+* Conflict states
+* Forms
+* Empty states
+
+## Acceptance Tests
+
+Critical scenarios include:
 
 ```text
-feature/authentication
-feature/productions
-feature/scheduling
-feature/conflict-detection
-feature/auditions
-feature/profile
-fix/schedule-validation
-docs/project-readme
+✓ Director logs in
+✓ Director creates production
+✓ Director creates role
+✓ Director assigns cast member
+✓ Director creates event
+✓ Venue conflict is blocked
+✓ Cast conflict is detected
+✓ Cast member signs up for audition
+✓ Schedule updates appear
+✓ Unauthorized writes are rejected
 ```
 
-### Commit Style
-
-```text
-feat: add production creation flow
-feat: add venue conflict detection
-fix: validate overlapping cast events
-docs: update project README
-test: add conflict detection tests
-```
-
-### Pull Request Flow
-
-```text
-Create branch
-    ↓
-Implement
-    ↓
-Test
-    ↓
-Commit
-    ↓
-Push
-    ↓
-Open Pull Request
-    ↓
-Review
-    ↓
-Merge into main
-```
-
-All meaningful changes should go through Pull Requests rather than direct feature work on `main`.
+The supplied PRD explicitly calls for unit, widget and manual/acceptance testing around these workflows.
 
 ---
 
-## 📁 Repository Structure
+# 📊 MVP Success Criteria
 
-As implementation progresses, the repository is expected to look approximately like:
+The MVP is successful when the core theatre-management workflow can be demonstrated end-to-end.
+
+### Authentication
+
+* [ ] Users can register
+* [ ] Users can log in
+* [ ] Sessions persist
+* [ ] Users can log out
+
+### Productions
+
+* [ ] Directors can create productions
+* [ ] Directors can edit productions
+* [ ] Directors can delete productions
+* [ ] Production posters can be uploaded
+
+### Casting
+
+* [ ] Directors can create roles
+* [ ] Directors can assign cast members
+* [ ] Cast members can view assignments
+
+### Scheduling
+
+* [ ] Directors can create events
+* [ ] Events appear in schedules
+* [ ] Real-time updates work
+
+### Conflict Prevention
+
+* [ ] Venue overlaps are detected
+* [ ] Cast overlaps are detected
+* [ ] Conflicting events cannot be incorrectly saved
+
+### Auditions
+
+* [ ] Directors can create auditions
+* [ ] Cast members can view auditions
+* [ ] Cast members can sign up
+
+### Security
+
+* [ ] Firestore rules protect director-only resources
+* [ ] Unauthorized writes are rejected
+
+---
+
+# 🗺️ Development Roadmap
+
+The original project plan follows an **8-week MVP roadmap**.
+
+| Week   | Milestone                                                              |
+| ------ | ---------------------------------------------------------------------- |
+| **01** | Product definition, architecture, wireframes, Flutter + Firebase setup |
+| **02** | Flutter scaffold, theme, navigation and static screens                 |
+| **03** | Forms, validation and state management                                 |
+| **04** | Firebase Authentication and role handling                              |
+| **05** | Firestore production model and CRUD                                    |
+| **06** | Event scheduling, real-time updates and Storage                        |
+| **07** | Casting, conflict detection, auditions and UI polish                   |
+| **08** | Testing, security rules, deployment and final demo                     |
+
+---
+
+# 🔭 Future Scope
+
+The MVP deliberately focuses on the most important coordination workflows.
+
+Potential future improvements include:
+
+### 🔔 Notifications
+
+Push notifications for:
+
+* Schedule changes
+* New auditions
+* Casting assignments
+* Rehearsal updates
+* Important production announcements
+
+### 📆 Calendar Integration
+
+Optional Google/device calendar synchronization.
+
+### 🔎 Search & Filtering
+
+Search productions and filter schedules by:
+
+* Production
+* Date
+* Event type
+* Venue
+* Cast member
+
+### 🛠️ Admin Panel
+
+Centralized management of:
+
+* Users
+* Roles
+* Permissions
+
+### 📡 Offline Support
+
+The broader system vision also identifies offline-first operation and synchronization as potential future reliability improvements.
+
+---
+
+# 🎬 Demo Flow
+
+The recommended demo tells one continuous story rather than showing disconnected screens.
+
+```text
+1. Director logs in
+        ↓
+2. Opens / creates a production
+        ↓
+3. Adds roles
+        ↓
+4. Assigns cast
+        ↓
+5. Creates a rehearsal
+        ↓
+6. Attempts a conflicting venue booking
+        ↓
+7. StageSync detects the conflict
+        ↓
+8. Director resolves it
+        ↓
+9. Cast member opens their schedule
+        ↓
+10. Cast member views their assignment
+        ↓
+11. Cast member signs up for an audition
+        ↓
+12. Schedule / audition data updates
+```
+
+This demonstrates the central value of StageSync:
+
+> **One place for the production, the people, the schedule — and the conflicts.**
+
+---
+
+# 📁 Repository Structure
 
 ```text
 S116-0826-Team-Shiny-Flutter-StageFlow/
 │
-├── lib/
-├── test/
-├── assets/
-│   ├── images/
-│   └── icons/
+├── lib/                 # Flutter application
+├── test/                # Unit and widget tests
+├── assets/              # Images, icons and other assets
 │
 ├── android/
 ├── ios/
@@ -601,86 +964,109 @@ S116-0826-Team-Shiny-Flutter-StageFlow/
 └── .gitignore
 ```
 
-Platform folders will depend on the Flutter targets enabled for the project.
-
 ---
 
-## 👨‍💻 Team Charter
+# 🌿 Git Workflow
 
-### Team
+We use feature branches and Pull Requests to keep development organized.
 
-**Team Shiny**
-
-### Squad
-
-**S116**
-
-### Working Agreement
-
-- Communicate blockers early.
-- Maintain regular GitHub activity.
-- Use branches instead of directly pushing feature work to `main`.
-- Create Pull Requests for changes.
-- Review teammates' PRs.
-- Test changes before merging.
-- Keep commits focused and meaningful.
-- Keep the repository organized.
-- Keep documentation updated as implementation changes.
-
----
-
-## 📊 MVP Success Criteria
-
-The MVP should demonstrate that:
-
-- A user can authenticate successfully.
-- A director can create and manage productions.
-- Roles and cast members can be assigned.
-- Events can be created and viewed.
-- Venue conflicts are detected and prevented.
-- Cast conflicts are detected and surfaced.
-- Auditions can be created and joined.
-- Users can view their relevant schedules.
-- Firestore rules enforce the intended access model.
-- Core workflows run on a real Android/iOS device or emulator.
-
-The PRD's success metrics include preventing conflicting events, consolidating schedules, and validating core functionality through acceptance testing. fileciteturn11file0
-
----
-
-## 🎬 Demo Story
-
-The recommended demonstration follows one continuous scenario:
+### Branch naming
 
 ```text
-1. Director logs in
-       ↓
-2. Creates / opens a production
-       ↓
-3. Adds roles and assigns cast
-       ↓
-4. Creates a rehearsal
-       ↓
-5. Attempts an overlapping venue booking
-       ↓
-6. StageFlow detects the conflict
-       ↓
-7. Director resolves the conflict
-       ↓
-8. Cast member opens their schedule
-       ↓
-9. Updated schedule is visible
-       ↓
-10. Audition flow is demonstrated
+feature/authentication
+feature/productions
+feature/casting
+feature/scheduling
+feature/conflict-detection
+feature/auditions
+feature/profile
+
+fix/schedule-validation
+fix/auth-state
+
+docs/project-readme
 ```
 
-This demonstrates the central product value: **bringing theatre coordination into one place and preventing scheduling problems before they happen.**
+### Commit examples
+
+```text
+feat: add production creation flow
+feat: add cast assignment
+feat: implement venue conflict detection
+feat: add audition sign-up
+fix: prevent overlapping cast events
+test: add conflict detection tests
+docs: update project README
+```
+
+### Pull Request workflow
+
+```text
+Create Branch
+     ↓
+Implement
+     ↓
+Test
+     ↓
+Commit
+     ↓
+Push
+     ↓
+Open Pull Request
+     ↓
+Review
+     ↓
+Merge
+```
+
+Keep commits focused and avoid pushing unfinished feature work directly to `main`.
 
 ---
 
-## 📚 Documentation
+# 👨‍💻 Team Shiny
 
-Project documentation should be maintained under:
+**Squad:** S116
+
+| Member       | Role                               | Primary Ownership                                                                   |
+| ------------ | ---------------------------------- | ----------------------------------------------------------------------------------- |
+| **Kanishka** | 🎨 Frontend & UI/UX Lead           | Flutter UI, Stitch integration, reusable widgets, navigation and design system      |
+| **Digvijay** | 🔥 Backend & Firebase Lead         | Authentication, Firestore, Storage, repositories, real-time data and security rules |
+| **Yashraj**  | ⚙️ Features, Integration & QA Lead | Scheduling, auditions, conflict detection, integration, testing and deployment      |
+
+### 🎨 Frontend & UI/UX
+
+* Build StageSync screens in Flutter
+* Translate designs into reusable components
+* Maintain theme, typography and spacing
+* Implement navigation
+* Handle loading, empty, error and conflict states
+
+### 🔥 Backend & Firebase
+
+* Configure Firebase
+* Implement Authentication
+* Maintain Firestore schema
+* Implement Storage
+* Build repositories/services
+* Maintain Security Rules and indexes
+
+### ⚙️ Features, Integration & QA
+
+* Implement scheduling
+* Implement auditions
+* Implement casting workflows
+* Build venue/cast conflict detection
+* Integrate frontend and backend
+* Write tests
+* Support deployment and demo preparation
+
+> Ownership defines primary responsibility. Architecture, integration, reviews and testing remain collaborative team responsibilities.
+
+---
+
+# 📚 Project Documentation
+
+Additional documentation should live under:
 
 ```text
 docs/
@@ -690,89 +1076,96 @@ docs/
 └── api/
 ```
 
-The supplied PRD covers the product scope, user stories, Firebase data model, authentication, storage, UI/UX sitemap, conflict logic, state management, roadmap, testing, deployment and demo requirements. fileciteturn11file0
+The project documentation covers product requirements, user stories, Firebase architecture, authentication, storage, UI/UX, conflict logic, testing, roadmap and deployment.
 
 ---
 
-## 📝 Current Project Status
+# 📌 Project Status
 
-**Phase:** Project setup → Flutter frontend implementation
+### Current Phase
 
-### Priorities
+**Flutter frontend implementation → Firebase integration → MVP feature development**
 
-- [ ] Establish Flutter application structure
-- [ ] Implement StageFlow UI baseline
-- [ ] Implement authentication
-- [ ] Implement production CRUD
-- [ ] Implement roles and cast assignment
-- [ ] Implement scheduling
-- [ ] Implement venue conflict detection
-- [ ] Implement cast conflict detection
-- [ ] Implement auditions
-- [ ] Connect Firebase
-- [ ] Add automated tests
-- [ ] Validate Firestore security rules
-- [ ] Prepare final demo
+### Current priorities
 
----
-
-## 👥 Team
-
-### Team Shiny — S116
-
-| Member | Role | Responsibilities |
-|---|---|---|
-| **[Kanishka]** | **Frontend & UI/UX Lead** | Flutter UI implementation, Stitch design integration, reusable widgets, navigation, responsive layouts, theme and design system |
-| **[Digvijay]** | **Backend & Firebase Lead** | Firebase Authentication, Firestore, Storage, data models, repositories/services, real-time data and security rules |
-| **[Yashraj]** | **Features, Integration & QA Lead** | Scheduling, auditions, cast/venue conflict detection, conflict resolution, frontend-backend integration, testing and deployment |
-
-### Role Ownership
-
-#### 🎨 Frontend & UI/UX Lead
-- Implement the StageFlow UI/UX in Flutter.
-- Translate the Stitch designs into reusable Flutter components.
-- Maintain the application theme, typography, spacing and visual consistency.
-- Build navigation, screens and shared UI components.
-- Handle loading, empty, error, conflict and success states.
-
-#### 🔥 Backend & Firebase Lead
-- Configure and maintain Firebase services.
-- Implement Firebase Authentication and role handling.
-- Design and maintain Firestore collections and data models.
-- Implement Firebase Storage for production assets.
-- Develop repositories/services and real-time data access.
-- Write and maintain Firestore Security Rules and indexes.
-
-#### ⚙️ Features, Integration & QA Lead
-- Implement scheduling and event workflows.
-- Implement auditions and cast assignment workflows.
-- Develop venue and cast conflict detection.
-- Build conflict resolution workflows.
-- Integrate Flutter screens with backend services.
-- Write unit/widget tests and perform acceptance testing.
-- Support deployment and final demo preparation.
-
-> **Note:** Role ownership defines the primary responsibility for each area. Team members should collaborate on integration, code reviews, testing and major architectural decisions.
-| TBD | TBD | TBD |
-
-Update this table once the final team member roles are confirmed.
+* [ ] Finalize Flutter application structure
+* [ ] Complete StageSync UI baseline
+* [ ] Implement authentication
+* [ ] Implement production CRUD
+* [ ] Implement roles and casting
+* [ ] Implement scheduling
+* [ ] Implement venue conflict detection
+* [ ] Implement cast conflict detection
+* [ ] Implement auditions
+* [ ] Connect Firebase
+* [ ] Add automated tests
+* [ ] Validate Firestore Security Rules
+* [ ] Prepare final demo
 
 ---
 
-## 📌 Repository
+# 💡 Product Philosophy
+
+StageSync is intentionally designed around one principle:
+
+> ### **Reduce coordination overhead so theatre teams can focus on the production — not the paperwork.**
+
+The application does not try to solve every theatre-management problem at once.
+
+The MVP focuses on the workflows where coordination matters most:
 
 ```text
-S116-0826-Team-Shiny-Flutter-StageFlow
+People
+  +
+Productions
+  +
+Roles
+  +
+Auditions
+  +
+Schedules
+  +
+Venues
+  ↓
+One coordinated system
 ```
-
-**Project:** StageFlow  
-**Squad:** S116  
-**Team:** Team Shiny  
-**Frontend:** Flutter / Dart  
-**Backend:** Firebase
 
 ---
 
-### Product Requirements Source
+# 🎭 Why StageSync?
 
-This README is based on the team's supplied **StageSync — Product Requirements Document**, including its MVP scope, user stories, data model, security requirements, UI/UX sitemap, conflict logic, development roadmap, testing strategy and deployment checklist.
+Because a theatre production should not depend on someone remembering:
+
+> “Wait… wasn't the rehearsal moved to 7?”
+
+StageSync turns scattered production coordination into a **centralized, real-time, conflict-aware workflow**.
+
+**Plan. Cast. Schedule. Coordinate. Perform.**
+
+---
+
+## 📄 Project Information
+
+|                       |                                          |
+| --------------------- | ---------------------------------------- |
+| **Project**           | StageSync                                |
+| **Squad**             | S116                                     |
+| **Team**              | Team Shiny                               |
+| **Frontend**          | Flutter / Dart                           |
+| **Backend**           | Firebase                                 |
+| **Database**          | Cloud Firestore                          |
+| **Authentication**    | Firebase Authentication                  |
+| **Storage**           | Firebase Storage                         |
+| **Repository**        | `S116-0826-Team-Shiny-Flutter-StageFlow` |
+
+
+
+---
+
+<p align="center">
+  Built with ❤️ by <strong>Team Shiny — S116</strong>
+</p>
+
+<p align="center">
+  <strong>StageSync</strong> · Theatre Production Management
+</p>
