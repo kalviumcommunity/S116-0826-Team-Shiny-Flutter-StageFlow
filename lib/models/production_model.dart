@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductionModel {
   ProductionModel({
+    this.id,
     required this.title,
     required this.description,
     required this.startDate,
@@ -12,6 +13,7 @@ class ProductionModel {
     required this.createdAt,
   });
 
+  final String? id;
   final String title;
   final String description;
   final DateTime startDate;
@@ -23,6 +25,7 @@ class ProductionModel {
 
   factory ProductionModel.fromMap(Map<String, dynamic> map, String id) {
     return ProductionModel(
+      id: id,
       title: map['title'] as String? ?? '',
       description: map['description'] as String? ?? '',
       startDate: _coerceDateTime(

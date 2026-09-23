@@ -28,14 +28,24 @@ class AuthViewModel extends ChangeNotifier {
 
       try {
         final profileStream = _userService.watchUserProfile(user.uid);
-        _profileSubscription = profileStream.listen((profile) {
-          currentUser = profile;
-          isLoading = false;
-          notifyListeners();
-        });
-      } catch (_) {
+        _profileSubscription = profileStream.listen(
+          (profile) {
+            currentUser = profile;
+            isLoading = false;
+            notifyListeners();
+          },
+          onError: (Object error) {
+            currentUser = null;
+            isLoading = false;
+            errorMessage =
+                'Failed to load user profile. Please check your connection.';
+            notifyListeners();
+          },
+        );
+      } catch (e) {
         currentUser = null;
         isLoading = false;
+        errorMessage = 'Failed to load user profile: $e';
         notifyListeners();
       }
     });
@@ -55,6 +65,7 @@ class AuthViewModel extends ChangeNotifier {
   void dispose() {
     _authSubscription?.cancel();
     _profileSubscription?.cancel();
+    _profileSubscription = null;
     super.dispose();
   }
 
@@ -84,7 +95,24 @@ class AuthViewModel extends ChangeNotifier {
       );
 
       if (credential.user != null) {
-        await _userService.createUserProfile(user);
+        try {
+          await _userService.createUserProfile(user);
+        } catch (profileError) {
+          try {
+            await _authService.deleteCurrentUser();
+          } catch (rollbackError) {
+            debugPrint(
+              'Failed to rollback Auth user after profile creation failure: '
+              '$rollbackError (Original profile error: $profileError)',
+            );
+          }
+          currentUser = null;
+          errorMessage =
+              'Account setup could not be completed. Please try again.';
+          isLoading = false;
+          notifyListeners();
+          return false;
+        }
       }
 
       currentUser = user;
@@ -136,6 +164,8 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _profileSubscription?.cancel();
+      _profileSubscription = null;
       await _authService.signOut();
       currentUser = null;
     } finally {
