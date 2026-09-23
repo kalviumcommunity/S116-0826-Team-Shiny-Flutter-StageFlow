@@ -17,6 +17,24 @@ class UserModel {
   final String? photoURL;
   final DateTime createdAt;
 
+  UserModel copyWith({
+    String? uid,
+    String? name,
+    String? email,
+    String? role,
+    String? photoURL,
+    DateTime? createdAt,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      photoURL: photoURL ?? this.photoURL,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
     return UserModel(
       uid: id,

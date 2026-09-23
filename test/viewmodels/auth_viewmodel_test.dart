@@ -227,4 +227,183 @@ void main() {
       viewModel.dispose();
     });
   });
+
+  group('AuthViewModel Profile Update Tests', () {
+    test('updateProfile succeeds, updates loading state, and calls UserService', () async {
+      final profileController = StreamController<UserModel?>();
+      when(() => mockUserService.watchUserProfile('new_auth_uid_123'))
+          .thenAnswer((_) => profileController.stream);
+      when(() => mockUserService.updateUserProfile(
+            uid: 'new_auth_uid_123',
+            data: any(named: 'data'),
+          )).thenAnswer((_) async {});
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+
+      authStateController.add(mockUser);
+      await pumpEventQueue();
+
+      profileController.add(UserModel(
+        uid: 'new_auth_uid_123',
+        name: 'Old Name',
+        email: 'cast@example.com',
+        role: 'cast',
+        createdAt: DateTime(2026, 1, 1),
+      ));
+      await pumpEventQueue();
+
+      final success = await viewModel.updateProfile(
+        name: 'New Name',
+        photoURL: 'https://example.com/new.jpg',
+      );
+
+      expect(success, isTrue);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, isNull);
+      verify(() => mockUserService.updateUserProfile(
+            uid: 'new_auth_uid_123',
+            data: {
+              'name': 'New Name',
+              'photoURL': 'https://example.com/new.jpg',
+            },
+          )).called(1);
+
+      await profileController.close();
+      viewModel.dispose();
+    });
+
+    test('updateProfile fails when no authenticated user is logged in', () async {
+      when(() => mockAuthService.currentUserId).thenReturn(null);
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+
+      final success = await viewModel.updateProfile(name: 'New Name');
+
+      expect(success, isFalse);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, 'No authenticated user found.');
+      verifyNever(() => mockUserService.updateUserProfile(
+            uid: any(named: 'uid'),
+            data: any(named: 'data'),
+          ));
+
+      viewModel.dispose();
+    });
+
+    test('updateProfile handles service error gracefully and sets errorMessage', () async {
+      final profileController = StreamController<UserModel?>();
+      when(() => mockUserService.watchUserProfile('new_auth_uid_123'))
+          .thenAnswer((_) => profileController.stream);
+      when(() => mockUserService.updateUserProfile(
+            uid: 'new_auth_uid_123',
+            data: any(named: 'data'),
+          )).thenThrow(Exception('Firestore write blocked by rules'));
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+
+      authStateController.add(mockUser);
+      await pumpEventQueue();
+
+      profileController.add(UserModel(
+        uid: 'new_auth_uid_123',
+        name: 'Old Name',
+        email: 'cast@example.com',
+        role: 'cast',
+        createdAt: DateTime(2026, 1, 1),
+      ));
+      await pumpEventQueue();
+
+      final success = await viewModel.updateProfile(name: 'Updated Name');
+
+      expect(success, isFalse);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, contains('Failed to update profile'));
+
+      await profileController.close();
+      viewModel.dispose();
+    });
+
+    test('updateUserProfile rejects protected fields via ArgumentError and sets errorMessage', () async {
+      final profileController = StreamController<UserModel?>();
+      when(() => mockUserService.watchUserProfile('new_auth_uid_123'))
+          .thenAnswer((_) => profileController.stream);
+      when(() => mockUserService.updateUserProfile(
+            uid: 'new_auth_uid_123',
+            data: any(named: 'data'),
+          )).thenThrow(ArgumentError('Cannot update protected field(s): role'));
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+
+      authStateController.add(mockUser);
+      await pumpEventQueue();
+
+      profileController.add(UserModel(
+        uid: 'new_auth_uid_123',
+        name: 'Old Name',
+        email: 'cast@example.com',
+        role: 'cast',
+        createdAt: DateTime(2026, 1, 1),
+      ));
+      await pumpEventQueue();
+
+      final success = await viewModel.updateUserProfile({'role': 'director'});
+
+      expect(success, isFalse);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, contains('Cannot update protected field(s): role'));
+
+      await profileController.close();
+      viewModel.dispose();
+    });
+
+    test('updateProfile preserves current user identity during update', () async {
+      final profileController = StreamController<UserModel?>();
+      when(() => mockUserService.watchUserProfile('new_auth_uid_123'))
+          .thenAnswer((_) => profileController.stream);
+      when(() => mockUserService.updateUserProfile(
+            uid: 'new_auth_uid_123',
+            data: any(named: 'data'),
+          )).thenAnswer((_) async {});
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+
+      authStateController.add(mockUser);
+      await pumpEventQueue();
+
+      final initialProfile = UserModel(
+        uid: 'new_auth_uid_123',
+        name: 'Initial Name',
+        email: 'cast@example.com',
+        role: 'cast',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      profileController.add(initialProfile);
+      await pumpEventQueue();
+
+      expect(viewModel.currentUser?.uid, 'new_auth_uid_123');
+
+      final success = await viewModel.updateProfile(name: 'Changed Name');
+      expect(success, isTrue);
+
+      expect(viewModel.currentUser?.uid, 'new_auth_uid_123');
+
+      await profileController.close();
+      viewModel.dispose();
+    });
+  });
 }
