@@ -6,3 +6,17 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Flutter generated/environment files
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+android/.gradle/
+android/local.properties
+*.iml
+.idea/
+android/app/google-services.json
