@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../viewmodels/auth_viewmodel.dart';
-
-import '../../app/theme/app_colors.dart';
-import '../../app/theme/app_typography.dart';
-import '../../utils/constants.dart';
-import '../../widgets/stageflow_button.dart';
-import '../../widgets/stageflow_text_field.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,52 +15,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'stage.manager@stageflow.org');
-  final _passwordController = TextEditingController(text: '••••••••');
-  bool _isLoading = false;
-  String _selectedRole = 'Stage Manager';
-
-  Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        final authViewModel = context.read<AuthViewModel?>();
-        if (authViewModel != null) {
-          await authViewModel.signIn(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
-        } else {
-          await Future.delayed(const Duration(milliseconds: 600));
-          if (mounted) {
-            context.go('/home');
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login Error: ')),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
-    }
-  }
-
-  void _quickFillRole(String role, String email) {
-    setState(() {
-      _selectedRole = role;
-      _emailController.text = email;
-    });
-  }
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -72,169 +26,251 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final auth = context.read<AuthViewModel>();
+    final success = await auth.signIn(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+
+    if (success && mounted) {
+      context.go('/home');
+    } else if (mounted && auth.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage!),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailText = _emailController.text.trim();
+    final resetController = TextEditingController(text: emailText);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your email address and we will send you a link to reset your password.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email Address',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(100, 42),
+            ),
+            onPressed: () async {
+              final email = resetController.text.trim();
+              if (email.isEmpty) return;
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password reset email sent. Please check your inbox.'),
+                      backgroundColor: Color(0xFF059669),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Send Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final auth = context.watch<AuthViewModel>();
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 24),
-                // Header Logo
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Subtle Theatre Branding
+                  Center(
+                    child: Container(
+                      width: 68,
+                      height: 68,
                       decoration: BoxDecoration(
-                        color: AppColors.deepNavy,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppTheme.burgundy.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.burgundy.withOpacity(0.18),
+                          width: 1.5,
+                        ),
                       ),
                       child: const Center(
-                        child: Icon(Icons.theater_comedy, color: Colors.white, size: 24),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      AppConstants.appName,
-                      style: AppTypography.headlineLg.copyWith(color: AppColors.deepNavy),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-
-                Text(
-                  'Command Center Login',
-                  style: AppTypography.display.copyWith(fontSize: 26),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Enter your credentials to manage active productions, schedules, and technical calls.',
-                  style: AppTypography.bodyMd,
-                ),
-                const SizedBox(height: 28),
-
-                // Form Fields
-                StageFlowTextField(
-                  label: 'Work Email',
-                  hint: 'name@stageflow.org',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your work email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                StageFlowTextField(
-                  label: 'Password',
-                  hint: 'Enter your password',
-                  controller: _passwordController,
-                  obscureText: true,
-                  prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 4) {
-                      return 'Password must be at least 4 characters';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password reset link sent to registered email.')),
-                      );
-                    },
-                    child: Text(
-                      'Forgot Password?',
-                      style: AppTypography.metadata.copyWith(
-                        color: AppColors.stageRed,
-                        fontWeight: FontWeight.w700,
+                        child: Icon(
+                          Icons.theater_comedy,
+                          size: 36,
+                          color: AppTheme.burgundy,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'StageSync',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Welcome back',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
 
-                const SizedBox(height: 16),
-                StageFlowButton(
-                  label: 'Sign In to StageFlow',
-                  variant: ButtonVariant.primary,
-                  isLoading: _isLoading,
-                  onPressed: _handleLogin,
-                ),
+                  // Email Input
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'name@theatre.edu',
+                      prefixIcon: Icon(Icons.email_outlined, size: 20),
+                    ),
+                    validator: Validators.email,
+                  ),
+                  const SizedBox(height: 16),
 
-                const SizedBox(height: 32),
-                Divider(height: 1, color: Theme.of(context).extension<StageFlowThemeExtension>()!.borderSubtle),
-                const SizedBox(height: 24),
-
-                // Quick Demo Role Switcher
-                Text(
-                  'DEMO QUICK LOGIN (SELECT ROLE)',
-                  style: AppTypography.metadata.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _selectedRole == 'Stage Manager' ? AppColors.stageRed : Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                          backgroundColor: _selectedRole == 'Stage Manager' ? AppColors.stageRed.withAlpha(20) : Colors.transparent,
+                  // Password Input
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _handleLogin(),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          size: 20,
                         ),
-                        onPressed: () => _quickFillRole('Stage Manager', 'stage.manager@stageflow.org'),
-                        child: const Text('Stage Mgr', style: TextStyle(fontSize: 12)),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _selectedRole == 'Director' ? AppColors.stageRed : Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                          backgroundColor: _selectedRole == 'Director' ? AppColors.stageRed.withAlpha(20) : Colors.transparent,
+                    validator: Validators.password,
+                  ),
+                  
+                  // Forgot password?
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      child: Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
-                        onPressed: () => _quickFillRole('Director', 'director.eleanor@stageflow.org'),
-                        child: const Text('Director', style: TextStyle(fontSize: 12)),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _selectedRole == 'Producer' ? AppColors.stageRed : Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                          backgroundColor: _selectedRole == 'Producer' ? AppColors.stageRed.withAlpha(20) : Colors.transparent,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Sign In Button
+                  ElevatedButton(
+                    onPressed: auth.isLoading ? null : _handleLogin,
+                    child: auth.isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text('Sign In'),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Create Account link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account?",
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 14,
                         ),
-                        onPressed: () => _quickFillRole('Producer', 'producer.croft@stageflow.org'),
-                        child: const Text('Producer', style: TextStyle(fontSize: 12)),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 4),
+                      TextButton(
+                        onPressed: () => context.push('/signup'),
+                        child: Text(
+                          'Create account',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -242,3 +278,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

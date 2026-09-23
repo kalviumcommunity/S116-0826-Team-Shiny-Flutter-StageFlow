@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/app_typography.dart';
 import '../../models/event.dart';
 import '../../repositories/stageflow_repository.dart';
-import '../../widgets/stageflow_button.dart';
-import '../../widgets/stageflow_text_field.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/date_formatter.dart';
+import '../../utils/validators.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -22,6 +23,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String _selectedType = 'Rehearsal';
   String _selectedProduction = 'Hamlet';
   String _selectedVenue = 'Main Stage';
+  DateTime _eventDate = DateTime.now();
   TimeOfDay _startTime = const TimeOfDay(hour: 14, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 16, minute: 0);
   bool _isSaving = false;
@@ -32,9 +34,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _isSaving = true;
       });
 
-      final now = DateTime.now();
-      final start = DateTime(now.year, now.month, now.day, _startTime.hour, _startTime.minute);
-      final end = DateTime(now.year, now.month, now.day, _endTime.hour, _endTime.minute);
+      final start = DateTime(_eventDate.year, _eventDate.month, _eventDate.day, _startTime.hour, _startTime.minute);
+      final end = DateTime(_eventDate.year, _eventDate.month, _eventDate.day, _endTime.hour, _endTime.minute);
 
       final newEvent = ScheduleEvent(
         id: 'evt-${DateTime.now().millisecondsSinceEpoch}',
@@ -56,10 +57,77 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('New event successfully added to schedule!')),
+          const SnackBar(
+            content: Text('New event successfully added to schedule!'),
+            backgroundColor: AppTheme.emerald,
+          ),
         );
         context.go('/schedule');
       }
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _eventDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.burgundy,
+              onPrimary: Colors.white,
+              onSurface: AppTheme.charcoal,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _eventDate = picked);
+    }
+  }
+
+  Future<void> _pickStartTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _startTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.burgundy,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _startTime = picked);
+    }
+  }
+
+  Future<void> _pickEndTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _endTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.burgundy,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _endTime = picked);
     }
   }
 
@@ -72,42 +140,83 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Create New Event Call'),
+        title: const Text('Schedule Call & Cue'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: _isSaving
+                ? const Center(child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                ))
+                : TextButton(
+                    onPressed: _saveEvent,
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Schedule Call & Cue', style: AppTypography.headlineLg),
-              const SizedBox(height: 4),
-              Text('Define the call title, venue assignment, time slot, and cast requirements.', style: AppTypography.bodyMd),
-              const SizedBox(height: 24),
-
-              // Title Input
-              StageFlowTextField(
-                label: 'Call Title',
-                hint: 'e.g. Act 2 Scene 1 Rehearsal',
-                controller: _titleController,
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return 'Please enter event title';
-                  }
-                  return null;
-                },
+              Text(
+                'Call Title',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _titleController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Act 2 Scene 1 Rehearsal',
+                  prefixIcon: Icon(Icons.title),
+                ),
+                validator: (v) => Validators.required(v, 'Please enter event title'),
+              ),
+              const SizedBox(height: 20),
 
-              // Production Dropdown
-              Text('PRODUCTION', style: AppTypography.metadata),
-              const SizedBox(height: 6),
+              // Event Type Choice Chips
+              Text(
+                'Call Type',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildTypeChip('Rehearsal'),
+                    const SizedBox(width: 8),
+                    _buildTypeChip('Tech Call'),
+                    const SizedBox(width: 8),
+                    _buildTypeChip('Fitting'),
+                    const SizedBox(width: 8),
+                    _buildTypeChip('Audition'),
+                    const SizedBox(width: 8),
+                    _buildTypeChip('Performance'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Production selector
               DropdownButtonFormField<String>(
                 value: _selectedProduction,
-                decoration: const InputDecoration(filled: true, fillColor: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Production',
+                  prefixIcon: Icon(Icons.theater_comedy),
+                ),
                 items: ['Hamlet', 'Macbeth', 'The Tempest', 'Romeo & Juliet'].map((p) {
                   return DropdownMenuItem(value: p, child: Text(p));
                 }).toList(),
@@ -115,29 +224,72 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   if (val != null) setState(() => _selectedProduction = val);
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // Event Type Dropdown
-              Text('EVENT TYPE', style: AppTypography.metadata),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: _selectedType,
-                decoration: const InputDecoration(filled: true, fillColor: Colors.white),
-                items: ['Rehearsal', 'Tech Call', 'Fitting', 'Audition', 'Performance'].map((t) {
-                  return DropdownMenuItem(value: t, child: Text(t));
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedType = val);
-                },
+              // Date Picker
+              InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date',
+                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                  ),
+                  child: Text(
+                    DateFormatter.formatFullDate(_eventDate),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+
+              // Time Range Row
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickStartTime,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Start Time',
+                          prefixIcon: Icon(Icons.access_time),
+                        ),
+                        child: Text(
+                          _startTime.format(context),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickEndTime,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'End Time',
+                          prefixIcon: Icon(Icons.access_time_filled),
+                        ),
+                        child: Text(
+                          _endTime.format(context),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
 
               // Venue Dropdown
-              Text('VENUE / ROOM', style: AppTypography.metadata),
-              const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: _selectedVenue,
-                decoration: const InputDecoration(filled: true, fillColor: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Venue / Room',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
                 items: ['Main Stage', 'Studio Theatre', 'Rehearsal Room A', 'Rehearsal Room B'].map((v) {
                   return DropdownMenuItem(value: v, child: Text(v));
                 }).toList(),
@@ -145,67 +297,58 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   if (val != null) setState(() => _selectedVenue = val);
                 },
               ),
-              const SizedBox(height: 16),
-
-              // Time Picker Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('START TIME', style: AppTypography.metadata),
-                        const SizedBox(height: 6),
-                        OutlinedButton(
-                          onPressed: () async {
-                            final picked = await showTimePicker(context: context, initialTime: _startTime);
-                            if (picked != null) setState(() => _startTime = picked);
-                          },
-                          child: Text(_startTime.format(context)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('END TIME', style: AppTypography.metadata),
-                        const SizedBox(height: 6),
-                        OutlinedButton(
-                          onPressed: () async {
-                            final picked = await showTimePicker(context: context, initialTime: _endTime);
-                            if (picked != null) setState(() => _endTime = picked);
-                          },
-                          child: Text(_endTime.format(context)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // Notes Input
-              StageFlowTextField(
-                label: 'Technical / Script Notes',
-                hint: 'Specific props, lighting setups, or script pages...',
+              TextFormField(
                 controller: _notesController,
                 maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Technical / Script Notes',
+                  hintText: 'Specific props, lighting setups, or script pages...',
+                  alignLabelWithHint: true,
+                ),
               ),
-              const SizedBox(height: 28),
-
-              StageFlowButton(
-                label: 'Save & Publish Call',
-                variant: ButtonVariant.primary,
-                isLoading: _isSaving,
-                onPressed: _saveEvent,
+              const SizedBox(height: 32),
+              
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.burgundy,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSaving ? null : _saveEvent,
+                  child: const Text('Save & Publish Call', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTypeChip(String type) {
+    final isSelected = _selectedType == type;
+    final theme = Theme.of(context);
+    return ChoiceChip(
+      label: Text(type),
+      selected: isSelected,
+      onSelected: (_) => setState(() => _selectedType = type),
+      selectedColor: theme.colorScheme.primary.withOpacity(0.12),
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+      ),
+      side: BorderSide(
+        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+        width: 1,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
     );
   }
 }
