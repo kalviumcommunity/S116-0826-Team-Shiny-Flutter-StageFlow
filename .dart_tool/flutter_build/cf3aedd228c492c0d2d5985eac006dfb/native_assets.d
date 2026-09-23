@@ -1,0 +1,1 @@
+ E:\\Downloads\\stagesync\\.dart_tool\\flutter_build\\cf3aedd228c492c0d2d5985eac006dfb\\native_assets.yaml: 

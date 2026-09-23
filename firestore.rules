@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getProduction(productionId) {
+      return get(/databases/$(database)/documents/productions/$(productionId));
+    }
+
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Role check derived purely from users/{uid}.role in Firestore (NO custom claims)
+    function isCastUser() {
+      return isAuthenticated() && getUserData(request.auth.uid).role == 'cast';
+    }
+
+    // Role check derived purely from the production document's directorId matching caller's UID (NO custom claims)
+    function isProductionDirector(productionId) {
+      return isAuthenticated() && getProduction(productionId).data.directorId == request.auth.uid;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Any authenticated user can read member profiles (needed for cast picker & director dashboard)
+      allow read: if isAuthenticated();
+      // Users can only create and update their own profile document
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false; // Profile records remain preserved
+    }
+
+    // Productions collection
+    match /productions/{productionId} {
+      // Authenticated users can read productions
+      allow read: if isAuthenticated();
+
+      // Only authenticated users can create productions if they assign themselves as director
+      allow create: if isAuthenticated() && request.resource.data.directorId == request.auth.uid;
+
+      // Only the assigned director can modify or delete their production
+      allow update, delete: if isAuthenticated() && resource.data.directorId == request.auth.uid;
+
+      // Sub-collection: Roles
+      match /roles/{roleId} {
+        allow read: if isAuthenticated();
+        // Only the production director can create, update, or delete roles
+        allow create, update, delete: if isProductionDirector(productionId);
+      }
+
+      // Sub-collection: Events
+      match /events/{eventId} {
+        allow read: if isAuthenticated();
+        // Only the production director can create, update, or delete events
+        allow create, update, delete: if isProductionDirector(productionId);
+      }
+
+      // Sub-collection: Auditions
+      match /auditions/{auditionId} {
+        allow read: if isAuthenticated();
+
+        // Director can create or delete auditions
+        allow create, delete: if isProductionDirector(productionId);
+
+        // Director can update everything; Cast members with users/{uid}.role == 'cast' can ONLY append their own UID to castIds
+        allow update: if isProductionDirector(productionId) ||
+          (
+            isCastUser() &&
+            // Must ONLY modify the 'castIds' field; cannot change date, time, venue, productionId, etc.
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['castIds']) &&
+            // All existing cast member signups must be retained (cannot remove another user)
+            request.resource.data.castIds.hasAll(resource.data.castIds) &&
+            // The only new addition to the castIds set must be the caller's own authenticated UID
+            request.resource.data.castIds.toSet().difference(resource.data.castIds.toSet()).hasOnly([request.auth.uid])
+          );
+      }
+    }
+
+    // Collection group queries for events and auditions across productions
+    match /{path=**}/events/{eventId} {
+      allow read: if isAuthenticated();
+    }
+
+    match /{path=**}/auditions/{auditionId} {
+      allow read: if isAuthenticated();
+    }
+  }
+}
+

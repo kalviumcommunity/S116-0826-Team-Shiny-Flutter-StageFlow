@@ -1,0 +1,6 @@
+{
+  "name": "StageSync",
+  "description": "Theatre production management mobile application for productions, casting, rehearsals, auditions, and schedule conflict detection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

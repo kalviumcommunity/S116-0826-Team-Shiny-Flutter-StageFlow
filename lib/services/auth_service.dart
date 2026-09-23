@@ -1,69 +1,143 @@
 import 'package:firebase_auth/firebase_auth.dart';
-
-class AuthException implements Exception {
-  AuthException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/app_user.dart';
 
 class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final FirebaseAuth? _injectedAuth;
+  final FirebaseFirestore? _injectedFirestore;
 
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  AuthService({
+    FirebaseAuth? auth,
+    FirebaseFirestore? firestore,
+  })  : _injectedAuth = auth,
+        _injectedFirestore = firestore;
 
-  String? get currentUserId => _firebaseAuth.currentUser?.uid;
+  FirebaseAuth get _auth => _injectedAuth ?? FirebaseAuth.instance;
+  FirebaseFirestore get _firestore => _injectedFirestore ?? FirebaseFirestore.instance;
 
-  Future<UserCredential> signUp({
-    required String email,
-    required String password,
-  }) async {
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  User? get currentFirebaseUser => _auth.currentUser;
+
+  Future<AppUser?> getCurrentUserData() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
     try {
-      return await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        return AppUser.fromMap(doc.data()!, doc.id);
+      }
+      // Fallback if doc is not yet written
+      return AppUser(
+        id: user.uid,
+        name: user.displayName ?? user.email?.split('@').first ?? 'User',
+        email: user.email ?? '',
+        role: 'cast',
+        photoURL: user.photoURL,
       );
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      return null;
     }
   }
 
-  Future<UserCredential> signIn({
+  Future<AppUser> signUp({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+  }) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) {
+        throw Exception('User registration failed: No user returned');
+      }
+
+      await firebaseUser.updateDisplayName(name.trim());
+
+      final appUser = AppUser(
+        id: firebaseUser.uid,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        role: role.trim().toLowerCase(),
+      );
+
+      // Create /users/{uid} document in Firestore
+      await _firestore.collection('users').doc(firebaseUser.uid).set(appUser.toMap());
+
+      return appUser;
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Failed to create account: ${e.toString()}');
+    }
+  }
+
+  Future<AppUser> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      return await _firebaseAuth.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) {
+        throw Exception('Sign in failed: No user returned');
+      }
+
+      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      if (doc.exists && doc.data() != null) {
+        return AppUser.fromMap(doc.data()!, doc.id);
+      }
+
+      // Default fallback
+      final fallbackUser = AppUser(
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName ?? email.split('@').first,
+        email: email,
+        role: 'cast',
+      );
+      await _firestore.collection('users').doc(firebaseUser.uid).set(fallbackUser.toMap());
+      return fallbackUser;
     } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapFirebaseAuthError(e));
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Failed to sign in: ${e.toString()}');
     }
   }
 
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
+    await _auth.signOut();
   }
 
-  String _mapFirebaseAuthError(FirebaseAuthException e) {
+  String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
-      case 'email-already-in-use':
-        return 'This email is already registered. Please sign in instead.';
-      case 'weak-password':
-        return 'Your password is too weak. Please choose a stronger password.';
-      case 'invalid-email':
-        return 'The email address is invalid. Please check it and try again.';
       case 'user-not-found':
-        return 'No account was found for that email.';
+        return 'No user found with this email address.';
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'email-already-in-use':
+        return 'This email address is already in use by another account.';
+      case 'invalid-email':
+        return 'The email address format is invalid.';
+      case 'weak-password':
+        return 'Password is too weak. Please use at least 6 characters.';
+      case 'network-request-failed':
+        return 'Network error: Please check your internet connection.';
       case 'too-many-requests':
-        return 'Too many attempts. Please wait a moment and try again.';
+        return 'Too many failed login attempts. Please try again later.';
       default:
-        return e.message ?? 'Authentication failed. Please try again.';
+        return e.message ?? 'Authentication error occurred. Please try again.';
     }
   }
 }

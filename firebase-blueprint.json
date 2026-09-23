@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "User": {
+      "collection": "users",
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "role": { "type": "string", "required": true, "enum": ["director", "cast"] },
+        "photoURL": { "type": "string", "required": false }
+      }
+    },
+    "Production": {
+      "collection": "productions",
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": true },
+        "startDate": { "type": "timestamp", "required": true },
+        "endDate": { "type": "timestamp", "required": true },
+        "directorId": { "type": "string", "required": true },
+        "imageURL": { "type": "string", "required": false }
+      }
+    },
+    "Role": {
+      "collection": "productions/{productionId}/roles",
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "assignedUserId": { "type": "string", "required": false }
+      }
+    },
+    "Event": {
+      "collection": "productions/{productionId}/events",
+      "fields": {
+        "date": { "type": "timestamp", "required": true },
+        "start": { "type": "timestamp", "required": true },
+        "end": { "type": "timestamp", "required": true },
+        "type": { "type": "string", "required": true, "enum": ["Rehearsal", "Audition", "Performance"] },
+        "venue": { "type": "string", "required": true },
+        "castIds": { "type": "array", "items": { "type": "string" }, "required": true },
+        "notes": { "type": "string", "required": false }
+      }
+    },
+    "Audition": {
+      "collection": "productions/{productionId}/auditions",
+      "fields": {
+        "date": { "type": "timestamp", "required": true },
+        "time": { "type": "string", "required": true },
+        "venue": { "type": "string", "required": true },
+        "castIds": { "type": "array", "items": { "type": "string" }, "required": true }
+      }
+    }
+  }
+}

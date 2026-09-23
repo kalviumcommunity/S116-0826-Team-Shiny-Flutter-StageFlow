@@ -1,88 +1,107 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EventModel {
-  EventModel({
+  final String id;
+  final String productionId;
+  final String? productionTitle;
+  final DateTime date;
+  final DateTime start;
+  final DateTime end;
+  final String type; // 'Rehearsal', 'Audition', 'Performance'
+  final String venue;
+  final List<String> castIds;
+  final String notes;
+
+  const EventModel({
+    required this.id,
+    required this.productionId,
+    this.productionTitle,
     required this.date,
     required this.start,
     required this.end,
     required this.type,
     required this.venue,
-    required this.venueKey,
     required this.castIds,
-    required this.notes,
+    this.notes = '',
   });
 
-  final DateTime date;
-  final DateTime start;
-  final DateTime end;
-  final String type;
-  final String venue;
-  final String venueKey;
-  final List<String> castIds;
-  final String notes;
+  bool get isRehearsal => type.toLowerCase() == 'rehearsal';
+  bool get isAudition => type.toLowerCase() == 'audition';
+  bool get isPerformance => type.toLowerCase() == 'performance';
 
-  static String normalizeVenue(String venue) {
-    return venue.trim().toLowerCase();
-  }
+  factory EventModel.fromFirestore(
+    DocumentSnapshot doc,
+    String productionId, [
+    String? productionTitle,
+  ]) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
 
-  factory EventModel.fromMap(Map<String, dynamic> map, String id) {
-    final venue = map['venue'] as String? ?? '';
+    DateTime parseTimestamp(dynamic value, DateTime fallback) {
+      if (value is Timestamp) return value.toDate();
+      return fallback;
+    }
+
+    final dateVal = parseTimestamp(data['date'], DateTime.now());
+    final startVal = parseTimestamp(data['start'], dateVal);
+    final endVal = parseTimestamp(data['end'], startVal.add(const Duration(hours: 2)));
+
+    final rawCast = data['castIds'];
+    final List<String> castList = [];
+    if (rawCast is List) {
+      for (var item in rawCast) {
+        if (item != null) castList.add(item.toString());
+      }
+    }
+
     return EventModel(
-      date: _coerceDateTime(
-        map['date'],
-        fallback: DateTime.fromMillisecondsSinceEpoch(0),
-      ),
-      start: _coerceDateTime(
-        map['start'],
-        fallback: DateTime.fromMillisecondsSinceEpoch(0),
-      ),
-      end: _coerceDateTime(
-        map['end'],
-        fallback: DateTime.fromMillisecondsSinceEpoch(0),
-      ),
-      type: map['type'] as String? ?? '',
-      venue: venue,
-      venueKey: map['venueKey'] as String? ?? normalizeVenue(venue),
-      castIds:
-          List<String>.from((map['castIds'] as List?) ?? const <dynamic>[]),
-      notes: map['notes'] as String? ?? '',
+      id: doc.id,
+      productionId: productionId,
+      productionTitle: productionTitle,
+      date: dateVal,
+      start: startVal,
+      end: endVal,
+      type: data['type'] as String? ?? 'Rehearsal',
+      venue: data['venue'] as String? ?? '',
+      castIds: castList,
+      notes: data['notes'] as String? ?? '',
     );
-  }
-
-  factory EventModel.fromDoc(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
-    return EventModel.fromMap(data, doc.id);
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'date': date,
-      'start': start,
-      'end': end,
+      'date': Timestamp.fromDate(date),
+      'start': Timestamp.fromDate(start),
+      'end': Timestamp.fromDate(end),
       'type': type,
       'venue': venue,
-      'venueKey': venueKey,
       'castIds': castIds,
       'notes': notes,
     };
   }
 
-  static DateTime _coerceDateTime(dynamic value, {required DateTime fallback}) {
-    if (value is DateTime) {
-      return value;
-    }
-    if (value is Timestamp) {
-      return value.toDate();
-    }
-    if (value is String) {
-      final parsed = DateTime.tryParse(value);
-      if (parsed != null) {
-        return parsed;
-      }
-    }
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-    return fallback;
+  EventModel copyWith({
+    String? id,
+    String? productionId,
+    String? productionTitle,
+    DateTime? date,
+    DateTime? start,
+    DateTime? end,
+    String? type,
+    String? venue,
+    List<String>? castIds,
+    String? notes,
+  }) {
+    return EventModel(
+      id: id ?? this.id,
+      productionId: productionId ?? this.productionId,
+      productionTitle: productionTitle ?? this.productionTitle,
+      date: date ?? this.date,
+      start: start ?? this.start,
+      end: end ?? this.end,
+      type: type ?? this.type,
+      venue: venue ?? this.venue,
+      castIds: castIds ?? this.castIds,
+      notes: notes ?? this.notes,
+    );
   }
 }

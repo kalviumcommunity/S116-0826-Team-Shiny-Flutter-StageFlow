@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../app/theme/app_colors.dart';
-import '../../app/theme/app_typography.dart';
+import 'package:provider/provider.dart';
 import '../../models/audition.dart';
-import '../../repositories/stageflow_repository.dart';
-import '../../widgets/avatar_badge.dart';
-import '../../widgets/section_header.dart';
-import '../../widgets/stageflow_button.dart';
-import '../../widgets/stageflow_card.dart';
-import '../../widgets/status_chip.dart';
+import '../../models/production.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/production_provider.dart';
+import '../../widgets/empty_state.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/date_utils.dart';
+import 'create_audition_dialog.dart';
 
 class AuditionsScreen extends StatefulWidget {
   const AuditionsScreen({super.key});
@@ -17,208 +17,393 @@ class AuditionsScreen extends StatefulWidget {
 }
 
 class _AuditionsScreenState extends State<AuditionsScreen> {
-  final _repository = MockStageFlowRepository();
-  List<AuditionCandidate> _candidates = [];
-  bool _isLoading = true;
-  String _selectedFilter = 'All';
+  String? _selectedProdId; // null = all productions
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAuditions();
+  void _openCreateDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => CreateAuditionDialog(initialProductionId: _selectedProdId),
+    );
   }
 
-  Future<void> _loadAuditions() async {
-    final list = await _repository.getAuditions();
-    if (mounted) {
-      setState(() {
-        _candidates = list;
-        _isLoading = false;
-      });
-    }
+  void _showApplicantsSheet(BuildContext context, Audition audition, ProductionProvider prodProv) {
+    final applicants = audition.castIds
+        .map((uid) => prodProv.usersMap[uid])
+        .where((u) => u != null)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '${audition.productionTitle ?? "Audition"} Applicants',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              Text(
+                '${audition.castIds.length} Performer${audition.castIds.length == 1 ? '' : 's'} signed up',
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              if (applicants.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text('No cast members have signed up yet.'),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: applicants.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (ctx, i) {
+                      final actor = applicants[i]!;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.burgundy.withOpacity(0.12),
+                          child: Text(
+                            actor.name.isNotEmpty ? actor.name[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              color: AppTheme.burgundy,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        title: Text(actor.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(actor.email, style: const TextStyle(fontSize: 12)),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _candidates.where((c) {
-      return _selectedFilter == 'All' || c.status == _selectedFilter;
-    }).toList();
+    final theme = Theme.of(context);
+    final auth = context.watch<AuthProvider>();
+    final prodProv = context.watch<ProductionProvider>();
+
+    final isDirector = auth.isDirector;
+    final currentUserId = auth.currentUser?.id ?? '';
+
+    final allAuditions = prodProv.allAuditions;
+    final displayedAuditions = _selectedProdId == null
+        ? allAuditions
+        : allAuditions.where((a) => a.productionId == _selectedProdId).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auditions & Recruitment'),
+        title: const Text('Audition Sessions'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_search_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Audition application portal link copied.')),
-              );
-            },
-          ),
+          if (isDirector)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(120, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                onPressed: () => _openCreateDialog(context),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Post Audition'),
+              ),
+            ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Audition Call Summary Card
-                  StageFlowCard(
-                    backgroundColor: AppColors.deepNavy,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            StatusChip(label: 'AUDITION CALL OPEN', type: ChipType.warning),
-                            Text('ROMEO & JULIET', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Main Stage Audition Session', style: AppTypography.headlineMd.copyWith(color: Colors.white)),
-                        const SizedBox(height: 4),
-                        Text('Slot Booking: 9:00 AM - 5:00 PM • Studio Theatre', style: AppTypography.bodyMd.copyWith(color: const Color(0xFFC4C7CA))),
-                      ],
+      body: Column(
+        children: [
+          // Production Filter Chips
+          if (prodProv.productions.isNotEmpty)
+            Container(
+              color: theme.colorScheme.surface,
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All Productions'),
+                      selected: _selectedProdId == null,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _selectedProdId = null);
+                      },
+                      selectedColor: theme.colorScheme.primary.withOpacity(0.12),
+                      side: BorderSide(
+                        color: _selectedProdId == null
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outline,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Filter Chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: ['All', 'Called Back', 'Under Review', 'Cast'].map((filter) {
-                        final isSelected = _selectedFilter == filter;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: FilterChip(
-                            label: Text(filter),
-                            selected: isSelected,
-                            selectedColor: AppColors.deepNavy,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 12,
-                            ),
-                            backgroundColor: Colors.white,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedFilter = filter;
-                              });
-                            },
+                    const SizedBox(width: 8),
+                    ...prodProv.productions.map((p) {
+                      final isSelected = _selectedProdId == p.id;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(p.title),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() => _selectedProdId = selected ? p.id : null);
+                          },
+                          selectedColor: theme.colorScheme.primary.withOpacity(0.12),
+                          side: BorderSide(
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outline,
                           ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          const Divider(height: 1),
 
-                  const SectionHeader(title: 'Candidate Roster & Notes'),
-                  const SizedBox(height: 12),
+          // Audition list
+          Expanded(
+            child: displayedAuditions.isEmpty
+                ? EmptyState(
+                    icon: Icons.how_to_reg_outlined,
+                    title: 'No audition sessions found',
+                    subtitle: isDirector
+                        ? 'Post open audition dates for actors to sign up for roles.'
+                        : 'There are no active audition calls for this selection.',
+                    actionLabel: isDirector ? 'Post Audition' : null,
+                    onAction: isDirector ? () => _openCreateDialog(context) : null,
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    itemCount: displayedAuditions.length,
+                    itemBuilder: (context, index) {
+                      final audition = displayedAuditions[index];
+                      final isSignedUp = audition.isUserSignedUp(currentUserId);
+                      final displayProdTitle = audition.productionTitle ??
+                          prodProv.productions
+                              .firstWhere(
+                                (p) => p.id == audition.productionId,
+                                orElse: () => Production(
+                                  id: '',
+                                  title: 'Production',
+                                  description: '',
+                                  startDate: DateTime.now(),
+                                  endDate: DateTime.now(),
+                                  directorId: '',
+                                ),
+                              )
+                              .title;
 
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(child: Text('No audition candidates found.'))
-                        : ListView.separated(
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final candidate = filtered[index];
-
-                              return StageFlowCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        AvatarBadge(
-                                          imageUrl: candidate.headshotUrl,
-                                          name: candidate.candidateName,
-                                          radius: 22,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    candidate.candidateName,
-                                                    style: AppTypography.headlineMd.copyWith(fontSize: 16),
-                                                  ),
-                                                  StatusChip.fromStatusString(candidate.status),
-                                                ],
-                                              ),
-                                              Text(
-                                                'Applying for: ${candidate.roleApplied}',
-                                                style: AppTypography.bodyMd.copyWith(fontWeight: FontWeight.bold),
-                                              ),
-                                              Text(
-                                                'Time: ${candidate.timeSlot}',
-                                                style: AppTypography.metadata,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.emerald.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                    const SizedBox(height: 10),
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).extension<StageFlowThemeExtension>()!.surfaceContainerLow,
-                                        borderRadius: BorderRadius.circular(8),
+                                    child: const Text(
+                                      'AUDITION CALL',
+                                      style: TextStyle(
+                                        color: AppTheme.emerald,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
                                       ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                    ),
+                                  ),
+                                  if (isDirector)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFBA1A1A)),
+                                      onPressed: () async {
+                                        await prodProv.deleteAudition(audition.id, audition.productionId);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Audition deleted')),
+                                          );
+                                        }
+                                      },
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                displayProdTitle,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    AppDateUtils.formatDate(audition.date),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    audition.time,
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    audition.venue,
+                                    style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${audition.castIds.length} Applicant${audition.castIds.length == 1 ? '' : 's'}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  if (isDirector)
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size(130, 36),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                      ),
+                                      icon: const Icon(Icons.visibility_outlined, size: 15),
+                                      label: const Text('View Applicants'),
+                                      onPressed: () => _showApplicantsSheet(context, audition, prodProv),
+                                    )
+                                  else if (isSignedUp)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.emerald.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(Icons.rate_review_outlined, size: 16, color: AppColors.deepNavy),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              '"${candidate.directorNotes}"',
-                                              style: AppTypography.bodyMd.copyWith(fontSize: 13, fontStyle: FontStyle.italic),
+                                          Icon(Icons.check, size: 14, color: AppTheme.emerald),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Signed Up',
+                                            style: TextStyle(
+                                              color: AppTheme.emerald,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
                                             ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.star, size: 14, color: AppColors.warningAmber),
-                                              Text(
-                                                '${candidate.rating}',
-                                                style: AppTypography.metadata.copyWith(fontWeight: FontWeight.bold),
-                                              ),
-                                            ],
                                           ),
                                         ],
                                       ),
+                                    )
+                                  else
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        minimumSize: const Size(100, 36),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                      ),
+                                      onPressed: () async {
+                                        if (currentUserId.isEmpty) return;
+                                        try {
+                                          await prodProv.signUpForAudition(
+                                            audition.id,
+                                            currentUserId,
+                                            audition.productionId,
+                                          );
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Successfully signed up for audition!'),
+                                                backgroundColor: AppTheme.emerald,
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Failed: ${e.toString()}'),
+                                                backgroundColor: theme.colorScheme.error,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      child: const Text('Sign Up'),
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
+                                ],
+                              ),
+                            ],
                           ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  StageFlowButton(
-                    label: '+ Register New Audition Slot',
-                    variant: ButtonVariant.darkNavy,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Audition slot registration form opened.')),
+                        ),
                       );
                     },
                   ),
-                ],
-              ),
-            ),
+          ),
+        ],
+      ),
+      floatingActionButton: isDirector && displayedAuditions.isNotEmpty
+          ? FloatingActionButton(
+              onPressed: () => _openCreateDialog(context),
+              backgroundColor: AppTheme.burgundy,
+              foregroundColor: Colors.white,
+              tooltip: 'Post Audition',
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }
