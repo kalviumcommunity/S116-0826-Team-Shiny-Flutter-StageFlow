@@ -23,6 +23,30 @@ class EventModel {
   final List<String> castIds;
   final String notes;
 
+  EventModel copyWith({
+    String? id,
+    DateTime? date,
+    DateTime? start,
+    DateTime? end,
+    String? type,
+    String? venue,
+    String? venueKey,
+    List<String>? castIds,
+    String? notes,
+  }) {
+    return EventModel(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      start: start ?? this.start,
+      end: end ?? this.end,
+      type: type ?? this.type,
+      venue: venue ?? this.venue,
+      venueKey: venueKey ?? this.venueKey,
+      castIds: castIds ?? this.castIds,
+      notes: notes ?? this.notes,
+    );
+  }
+
   static String normalizeVenue(String venue) {
     return venue.trim().toLowerCase();
   }

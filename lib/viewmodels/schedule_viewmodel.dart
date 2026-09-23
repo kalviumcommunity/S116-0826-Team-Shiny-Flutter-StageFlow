@@ -142,9 +142,17 @@ class ScheduleViewModel extends ChangeNotifier {
     _productionTitles.clear();
   }
 
+  void stopWatching() {
+    _cleanup();
+    scheduledItems = const [];
+    isLoading = false;
+    errorMessage = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    _cleanup();
+    stopWatching();
     super.dispose();
   }
 }

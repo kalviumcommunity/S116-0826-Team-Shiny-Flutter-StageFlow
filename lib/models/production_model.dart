@@ -23,6 +23,33 @@ class ProductionModel {
   final List<String> memberIds;
   final DateTime createdAt;
 
+  bool get isValidDateRange => !startDate.isAfter(endDate);
+
+  ProductionModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? directorId,
+    String? imageURL,
+    List<String>? memberIds,
+    DateTime? createdAt,
+    bool clearImageURL = false,
+  }) {
+    return ProductionModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      directorId: directorId ?? this.directorId,
+      imageURL: clearImageURL ? null : (imageURL ?? this.imageURL),
+      memberIds: memberIds ?? this.memberIds,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory ProductionModel.fromMap(Map<String, dynamic> map, String id) {
     return ProductionModel(
       id: id,

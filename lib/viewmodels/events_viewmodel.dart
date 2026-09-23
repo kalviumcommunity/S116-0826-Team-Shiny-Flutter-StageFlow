@@ -116,9 +116,19 @@ class EventsViewModel extends ChangeNotifier {
     }
   }
 
+  void stopWatching() {
+    _eventsSubscription?.cancel();
+    _eventsSubscription = null;
+    events = const <EventModel>[];
+    isLoading = false;
+    errorMessage = null;
+    conflictMessage = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    _eventsSubscription?.cancel();
+    stopWatching();
     super.dispose();
   }
 }

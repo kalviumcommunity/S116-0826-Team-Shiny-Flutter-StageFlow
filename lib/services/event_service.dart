@@ -43,8 +43,19 @@ class EventService {
   /// 5. If valid, the new event is written ([transaction.set]) and the production's memberIds are updated
   ///    ([transaction.update] with arrayUnion) within the exact same atomic transaction.
   Future<String> createEvent(String prodId, EventModel newEvent) async {
-    final eventsRef = _eventsCollection(prodId);
-    final prodRef = _productionDoc(prodId);
+    final trimmedProdId = prodId.trim();
+    if (trimmedProdId.isEmpty) {
+      throw ArgumentError('Production ID cannot be empty.');
+    }
+    if (!newEvent.start.isBefore(newEvent.end)) {
+      throw ArgumentError('Event start time must be before end time.');
+    }
+    if (newEvent.venue.trim().isEmpty) {
+      throw ArgumentError('Event venue cannot be empty.');
+    }
+
+    final eventsRef = _eventsCollection(trimmedProdId);
+    final prodRef = _productionDoc(trimmedProdId);
     final normalizedVenue = EventModel.normalizeVenue(newEvent.venue);
     final dayDate = normalizeDate(newEvent.date);
 
@@ -140,11 +151,26 @@ class EventService {
     String eventId,
     EventModel updatedEvent,
   ) async {
-    final eventsRef = _eventsCollection(prodId);
-    final prodRef = _productionDoc(prodId);
+    final trimmedProdId = prodId.trim();
+    final trimmedEventId = eventId.trim();
+    if (trimmedProdId.isEmpty) {
+      throw ArgumentError('Production ID cannot be empty.');
+    }
+    if (trimmedEventId.isEmpty) {
+      throw ArgumentError('Event ID cannot be empty.');
+    }
+    if (!updatedEvent.start.isBefore(updatedEvent.end)) {
+      throw ArgumentError('Event start time must be before end time.');
+    }
+    if (updatedEvent.venue.trim().isEmpty) {
+      throw ArgumentError('Event venue cannot be empty.');
+    }
+
+    final eventsRef = _eventsCollection(trimmedProdId);
+    final prodRef = _productionDoc(trimmedProdId);
     final normalizedVenue = EventModel.normalizeVenue(updatedEvent.venue);
     final dayDate = normalizeDate(updatedEvent.date);
-    final eventDocRef = eventsRef.doc(eventId);
+    final eventDocRef = eventsRef.doc(trimmedEventId);
 
     final venueCandidatesSnapshot = await eventsRef
         .where('venueKey', isEqualTo: normalizedVenue)
@@ -222,7 +248,15 @@ class EventService {
   }
 
   Future<void> deleteEvent(String prodId, String eventId) async {
-    await _eventsCollection(prodId).doc(eventId).delete();
+    final trimmedProdId = prodId.trim();
+    final trimmedEventId = eventId.trim();
+    if (trimmedProdId.isEmpty) {
+      throw ArgumentError('Production ID cannot be empty.');
+    }
+    if (trimmedEventId.isEmpty) {
+      throw ArgumentError('Event ID cannot be empty.');
+    }
+    await _eventsCollection(trimmedProdId).doc(trimmedEventId).delete();
   }
 
   Stream<List<EventModel>> watchEvents(String prodId) {

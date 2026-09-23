@@ -66,6 +66,13 @@ class ProductionsViewModel extends ChangeNotifier {
     required String directorId,
     File? posterFile,
   }) async {
+    if (startDate.isAfter(endDate)) {
+      isLoading = false;
+      errorMessage = 'Start date cannot be after end date.';
+      notifyListeners();
+      return false;
+    }
+
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -117,6 +124,13 @@ class ProductionsViewModel extends ChangeNotifier {
     File? newPosterFile,
     String? existingImageURL,
   }) async {
+    if (startDate.isAfter(endDate)) {
+      isLoading = false;
+      errorMessage = 'Start date cannot be after end date.';
+      notifyListeners();
+      return false;
+    }
+
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -171,9 +185,18 @@ class ProductionsViewModel extends ChangeNotifier {
     }
   }
 
+  void stopWatching() {
+    _productionsSubscription?.cancel();
+    _productionsSubscription = null;
+    productions = const <ProductionModel>[];
+    isLoading = false;
+    errorMessage = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    _productionsSubscription?.cancel();
+    stopWatching();
     super.dispose();
   }
 }

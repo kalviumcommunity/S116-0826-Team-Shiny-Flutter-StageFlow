@@ -8,6 +8,8 @@ class AuditionModel {
     required this.venue,
     required this.venueKey,
     required this.castIds,
+    this.status = 'open',
+    this.capacity,
   });
 
   final String? id;
@@ -16,6 +18,34 @@ class AuditionModel {
   final String venue;
   final String venueKey;
   final List<String> castIds;
+  final String status;
+  final int? capacity;
+
+  bool get isFull => capacity != null && castIds.length >= capacity!;
+  bool get isOpen => status == 'open' && !isFull;
+
+  AuditionModel copyWith({
+    String? id,
+    DateTime? date,
+    String? time,
+    String? venue,
+    String? venueKey,
+    List<String>? castIds,
+    String? status,
+    int? capacity,
+    bool clearCapacity = false,
+  }) {
+    return AuditionModel(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      time: time ?? this.time,
+      venue: venue ?? this.venue,
+      venueKey: venueKey ?? this.venueKey,
+      castIds: castIds ?? this.castIds,
+      status: status ?? this.status,
+      capacity: clearCapacity ? null : (capacity ?? this.capacity),
+    );
+  }
 
   static String normalizeVenue(String venue) {
     return venue.trim().toLowerCase();
@@ -34,6 +64,8 @@ class AuditionModel {
       venueKey: map['venueKey'] as String? ?? normalizeVenue(venue),
       castIds:
           List<String>.from((map['castIds'] as List?) ?? const <dynamic>[]),
+      status: map['status'] as String? ?? 'open',
+      capacity: map['capacity'] is int ? map['capacity'] as int : null,
     );
   }
 
@@ -49,6 +81,8 @@ class AuditionModel {
       'venue': venue,
       'venueKey': venueKey,
       'castIds': castIds,
+      'status': status,
+      if (capacity != null) 'capacity': capacity,
     };
   }
 
