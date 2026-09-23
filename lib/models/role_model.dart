@@ -11,6 +11,20 @@ class RoleModel {
   final String name;
   final String? assignedUserId;
 
+  RoleModel copyWith({
+    String? id,
+    String? name,
+    String? assignedUserId,
+    bool clearAssignedUser = false,
+  }) {
+    return RoleModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      assignedUserId:
+          clearAssignedUser ? null : (assignedUserId ?? this.assignedUserId),
+    );
+  }
+
   factory RoleModel.fromMap(Map<String, dynamic> map, String id) {
     return RoleModel(
       id: id,

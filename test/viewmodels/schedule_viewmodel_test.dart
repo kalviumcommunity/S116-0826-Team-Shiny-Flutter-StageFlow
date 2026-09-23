@@ -151,5 +151,56 @@ void main() {
       await failingEventController.close();
       await healthyEventController.close();
     });
+
+    test('stopWatching cancels all streams and resets scheduledItems', () async {
+      final prodController = StreamController<List<ProductionModel>>();
+      final eventController = StreamController<List<EventModel>>();
+
+      when(() => mockProductionService.watchMyProductions('user_1'))
+          .thenAnswer((_) => prodController.stream);
+      when(() => mockEventService.watchEvents('prod_101'))
+          .thenAnswer((_) => eventController.stream);
+
+      viewModel.startWatching('user_1');
+      prodController.add([
+        ProductionModel(
+          id: 'prod_101',
+          title: 'Macbeth',
+          description: 'Scottish play',
+          startDate: DateTime(2026, 10, 1),
+          endDate: DateTime(2026, 10, 10),
+          directorId: 'dir_1',
+          memberIds: ['user_1'],
+          createdAt: DateTime(2026, 9, 1),
+        ),
+      ]);
+      await pumpEventQueue();
+
+      eventController.add([
+        EventModel(
+          id: 'event_1',
+          date: DateTime(2026, 10, 5),
+          start: DateTime(2026, 10, 5, 14, 0),
+          end: DateTime(2026, 10, 5, 16, 0),
+          type: 'Rehearsal',
+          venue: 'Studio A',
+          venueKey: 'studio a',
+          castIds: ['user_1'],
+          notes: 'Act 1 run',
+        ),
+      ]);
+      await pumpEventQueue();
+
+      expect(viewModel.scheduledItems.isNotEmpty, isTrue);
+
+      viewModel.stopWatching();
+
+      expect(viewModel.scheduledItems, isEmpty);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, isNull);
+
+      await prodController.close();
+      await eventController.close();
+    });
   });
 }

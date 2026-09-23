@@ -69,6 +69,42 @@ class RolesViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateRole(String prodId, RoleModel role) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _roleService.updateRole(prodId, role);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = 'Failed to update role: $e';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteRole(String prodId, String roleId) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _roleService.deleteRole(prodId, roleId);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = 'Failed to delete role: $e';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> assignRole(String prodId, String roleId, String userId) async {
     isLoading = true;
     errorMessage = null;
@@ -105,9 +141,19 @@ class RolesViewModel extends ChangeNotifier {
     }
   }
 
+  void stopWatching() {
+    _rolesSubscription?.cancel();
+    _rolesSubscription = null;
+    roles = const <RoleModel>[];
+    castUsers = const <UserModel>[];
+    isLoading = false;
+    errorMessage = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    _rolesSubscription?.cancel();
+    stopWatching();
     super.dispose();
   }
 }

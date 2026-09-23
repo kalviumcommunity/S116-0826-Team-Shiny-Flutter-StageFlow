@@ -10,7 +10,19 @@ class ProductionService {
   CollectionReference<Map<String, dynamic>> get _productionsCollection =>
       _firestore.collection('productions');
 
+  static DateTime? _extractDateTime(dynamic val) {
+    if (val is DateTime) return val;
+    if (val is Timestamp) return val.toDate();
+    if (val is String) return DateTime.tryParse(val);
+    if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+    return null;
+  }
+
   Future<String> createProduction(ProductionModel production) async {
+    if (production.startDate.isAfter(production.endDate)) {
+      throw ArgumentError('Production start date cannot be after end date.');
+    }
+
     final docRef = _productionsCollection.doc();
     final data = production.toMap()
       ..['memberIds'] = <String>[production.directorId];
@@ -23,7 +35,38 @@ class ProductionService {
     String prodId,
     Map<String, dynamic> updates,
   ) async {
-    await _productionsCollection.doc(prodId).update(updates);
+    final trimmedProdId = prodId.trim();
+    if (trimmedProdId.isEmpty) {
+      throw ArgumentError('Production ID cannot be empty.');
+    }
+
+    final hasStart =
+        updates.containsKey('startDate') && updates['startDate'] != null;
+    final hasEnd = updates.containsKey('endDate') && updates['endDate'] != null;
+
+    if (hasStart || hasEnd) {
+      final updatedStart =
+          hasStart ? _extractDateTime(updates['startDate']) : null;
+      final updatedEnd = hasEnd ? _extractDateTime(updates['endDate']) : null;
+
+      if (hasStart && hasEnd && updatedStart != null && updatedEnd != null) {
+        if (updatedStart.isAfter(updatedEnd)) {
+          throw ArgumentError('Production start date cannot be after end date.');
+        }
+      } else {
+        final existing = await getProduction(trimmedProdId);
+        if (existing != null) {
+          final finalStart = updatedStart ?? existing.startDate;
+          final finalEnd = updatedEnd ?? existing.endDate;
+          if (finalStart.isAfter(finalEnd)) {
+            throw ArgumentError(
+                'Production start date cannot be after end date.');
+          }
+        }
+      }
+    }
+
+    await _productionsCollection.doc(trimmedProdId).update(updates);
   }
 
   Future<void> deleteProduction(String prodId) async {

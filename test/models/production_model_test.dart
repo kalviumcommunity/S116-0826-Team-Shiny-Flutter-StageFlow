@@ -67,5 +67,65 @@ void main() {
       expect(model.endDate.millisecondsSinceEpoch, now.millisecondsSinceEpoch);
       expect(model.createdAt, DateTime.fromMillisecondsSinceEpoch(0));
     });
+
+    test('isValidDateRange returns true when startDate <= endDate and false when startDate > endDate', () {
+      final valid = ProductionModel(
+        title: 'Valid Range',
+        description: 'Test',
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 31),
+        directorId: 'dir',
+        memberIds: ['dir'],
+        createdAt: DateTime.now(),
+      );
+      expect(valid.isValidDateRange, isTrue);
+
+      final sameDate = ProductionModel(
+        title: 'Same Date',
+        description: 'Test',
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 1, 1),
+        directorId: 'dir',
+        memberIds: ['dir'],
+        createdAt: DateTime.now(),
+      );
+      expect(sameDate.isValidDateRange, isTrue);
+
+      final invalid = ProductionModel(
+        title: 'Invalid Range',
+        description: 'Test',
+        startDate: DateTime(2026, 2, 1),
+        endDate: DateTime(2026, 1, 1),
+        directorId: 'dir',
+        memberIds: ['dir'],
+        createdAt: DateTime.now(),
+      );
+      expect(invalid.isValidDateRange, isFalse);
+    });
+
+    test('copyWith updates specified fields and preserves existing', () {
+      final original = ProductionModel(
+        id: 'prod_1',
+        title: 'Original Title',
+        description: 'Original Desc',
+        startDate: DateTime(2026, 1, 1),
+        endDate: DateTime(2026, 2, 1),
+        directorId: 'dir_1',
+        imageURL: 'https://example.com/poster.png',
+        memberIds: ['dir_1'],
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      final updated = original.copyWith(
+        title: 'New Title',
+        clearImageURL: true,
+      );
+
+      expect(updated.id, 'prod_1');
+      expect(updated.title, 'New Title');
+      expect(updated.description, 'Original Desc');
+      expect(updated.imageURL, isNull);
+      expect(updated.directorId, 'dir_1');
+    });
   });
 }

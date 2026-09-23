@@ -55,6 +55,42 @@ class AuditionsViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateAudition(String prodId, AuditionModel audition) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _auditionService.updateAudition(prodId, audition);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = 'Failed to update audition slot: $e';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteAudition(String prodId, String audId) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _auditionService.deleteAudition(prodId, audId);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = 'Failed to delete audition slot: $e';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> signUp(String prodId, String audId, String userId) async {
     isLoading = true;
     errorMessage = null;
@@ -91,9 +127,18 @@ class AuditionsViewModel extends ChangeNotifier {
     }
   }
 
+  void stopWatching() {
+    _auditionsSubscription?.cancel();
+    _auditionsSubscription = null;
+    auditions = const <AuditionModel>[];
+    isLoading = false;
+    errorMessage = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    _auditionsSubscription?.cancel();
+    stopWatching();
     super.dispose();
   }
 }
