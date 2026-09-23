@@ -73,6 +73,24 @@ class AuditionsViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> withdraw(String prodId, String audId, String userId) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _auditionService.withdraw(prodId, audId, userId);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = 'Failed to withdraw from audition: $e';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   @override
   void dispose() {
     _auditionsSubscription?.cancel();

@@ -80,12 +80,18 @@ class ScheduleViewModel extends ChangeNotifier {
 
       if (!_eventSubscriptions.containsKey(prodId)) {
         _eventSubscriptions[prodId] =
-            _eventService.watchEvents(prodId).listen((events) {
-          _eventsByProduction[prodId] = events;
-          _recomputeScheduledItems();
-        }, onError: (Object err) {
-          debugPrint('Error loading events for $prodId: $err');
-        });
+            _eventService.watchEvents(prodId).listen(
+          (events) {
+            _eventsByProduction[prodId] = events;
+            _recomputeScheduledItems();
+          },
+          onError: (Object err) {
+            debugPrint('Error loading events for $prodId: $err');
+            errorMessage = 'Some production schedules could not be loaded.';
+            _eventsByProduction.remove(prodId);
+            _recomputeScheduledItems();
+          },
+        );
       }
     }
 

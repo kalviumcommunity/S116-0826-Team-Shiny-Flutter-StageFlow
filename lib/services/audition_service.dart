@@ -7,10 +7,12 @@ class AuditionService {
     FirebaseFirestore? firestore,
     ProductionService? productionService,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _productionService = productionService ?? ProductionService();
+        _productionService = productionService;
 
   final FirebaseFirestore _firestore;
-  final ProductionService _productionService;
+  final ProductionService? _productionService;
+
+  ProductionService? get productionService => _productionService;
 
   CollectionReference<Map<String, dynamic>> _auditionsCollection(
           String prodId) =>
@@ -26,11 +28,23 @@ class AuditionService {
   }
 
   Future<void> signUp(String prodId, String audId, String userId) async {
+    final trimmedUserId = userId.trim();
+    if (trimmedUserId.isEmpty) {
+      throw ArgumentError('userId cannot be empty');
+    }
     await _auditionsCollection(prodId).doc(audId).update({
-      'castIds': FieldValue.arrayUnion([userId]),
+      'castIds': FieldValue.arrayUnion([trimmedUserId]),
     });
-    // Add user to the production's memberIds so security rules grant read access
-    await _productionService.addMemberId(prodId, userId);
+  }
+
+  Future<void> withdraw(String prodId, String audId, String userId) async {
+    final trimmedUserId = userId.trim();
+    if (trimmedUserId.isEmpty) {
+      throw ArgumentError('userId cannot be empty');
+    }
+    await _auditionsCollection(prodId).doc(audId).update({
+      'castIds': FieldValue.arrayRemove([trimmedUserId]),
+    });
   }
 
   Stream<List<AuditionModel>> watchAuditions(String prodId) {

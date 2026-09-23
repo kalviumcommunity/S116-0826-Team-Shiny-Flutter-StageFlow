@@ -26,6 +26,34 @@ service cloud.firestore {
         request.auth.uid == getProduction(prodId).data.directorId;
     }
 
+    function isCastUser() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cast';
+    }
+
+    function isSelfSignup() {
+      let oldCast = ('castIds' in resource.data) ? resource.data.castIds : [];
+      let newCast = request.resource.data.castIds;
+      return isCastUser() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['castIds']) &&
+        newCast.size() == oldCast.size() + 1 &&
+        newCast.hasAll(oldCast) &&
+        newCast.hasAny([request.auth.uid]) &&
+        !oldCast.hasAny([request.auth.uid]);
+    }
+
+    function isSelfWithdrawal() {
+      let oldCast = ('castIds' in resource.data) ? resource.data.castIds : [];
+      let newCast = request.resource.data.castIds;
+      return isAuthenticated() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['castIds']) &&
+        newCast.size() == oldCast.size() - 1 &&
+        oldCast.hasAll(newCast) &&
+        oldCast.hasAny([request.auth.uid]) &&
+        !newCast.hasAny([request.auth.uid]);
+    }
+
     // --- Users Collection ---
     match /users/{userId} {
       // Direct access is restricted to the owning user
@@ -80,15 +108,15 @@ service cloud.firestore {
 
       // --- Auditions Subcollection ---
       match /auditions/{audId} {
-        allow read: if isProductionMember(prodId);
+        // Authenticated cast users, production members, or applicants in castIds can discover/read auditions
+        allow read: if isProductionMember(prodId) ||
+          isCastUser() ||
+          (isAuthenticated() && ('castIds' in resource.data) && resource.data.castIds.hasAny([request.auth.uid]));
+
         allow create, delete: if isProductionDirector(prodId);
-        // Cast members may update an audition document ONLY to add their own UID to castIds
-        allow update: if isProductionDirector(prodId) || (
-          isProductionMember(prodId) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['castIds']) &&
-          request.resource.data.castIds.hasAll(resource.data.castIds) &&
-          request.resource.data.castIds.hasAny([request.auth.uid])
-        );
+
+        // Director has full management; cast users can only atomically self-signup or self-withdraw their own UID
+        allow update: if isProductionDirector(prodId) || isSelfSignup() || isSelfWithdrawal();
       }
     }
   }

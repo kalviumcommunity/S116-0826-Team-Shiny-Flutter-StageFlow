@@ -10,7 +10,10 @@ class AuthException implements Exception {
 }
 
 class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  AuthService({FirebaseAuth? firebaseAuth})
+      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+
+  final FirebaseAuth _firebaseAuth;
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -46,6 +49,13 @@ class AuthService {
 
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
+  }
+
+  Future<void> deleteCurrentUser() async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null) {
+      await user.delete();
+    }
   }
 
   String _mapFirebaseAuthError(FirebaseAuthException e) {
