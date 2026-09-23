@@ -10,7 +10,10 @@ class AuthException implements Exception {
 }
 
 class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  AuthService({FirebaseAuth? firebaseAuth})
+      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+
+  final FirebaseAuth _firebaseAuth;
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -48,6 +51,13 @@ class AuthService {
     await _firebaseAuth.signOut();
   }
 
+  Future<void> deleteCurrentUser() async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null) {
+      await user.delete();
+    }
+  }
+
   String _mapFirebaseAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
@@ -60,6 +70,8 @@ class AuthService {
         return 'No account was found for that email.';
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
+      case 'invalid-credential':
+        return 'Incorrect email or password. Please try again.';
       case 'too-many-requests':
         return 'Too many attempts. Please wait a moment and try again.';
       default:

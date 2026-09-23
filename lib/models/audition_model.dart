@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuditionModel {
   AuditionModel({
+    this.id,
     required this.date,
     required this.time,
     required this.venue,
@@ -9,6 +10,7 @@ class AuditionModel {
     required this.castIds,
   });
 
+  final String? id;
   final DateTime date;
   final String time;
   final String venue;
@@ -22,6 +24,7 @@ class AuditionModel {
   factory AuditionModel.fromMap(Map<String, dynamic> map, String id) {
     final venue = map['venue'] as String? ?? '';
     return AuditionModel(
+      id: id,
       date: _coerceDateTime(
         map['date'],
         fallback: DateTime.fromMillisecondsSinceEpoch(0),

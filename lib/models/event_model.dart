@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EventModel {
   EventModel({
+    this.id,
     required this.date,
     required this.start,
     required this.end,
@@ -12,6 +13,7 @@ class EventModel {
     required this.notes,
   });
 
+  final String? id;
   final DateTime date;
   final DateTime start;
   final DateTime end;
@@ -28,6 +30,7 @@ class EventModel {
   factory EventModel.fromMap(Map<String, dynamic> map, String id) {
     final venue = map['venue'] as String? ?? '';
     return EventModel(
+      id: id,
       date: _coerceDateTime(
         map['date'],
         fallback: DateTime.fromMillisecondsSinceEpoch(0),
