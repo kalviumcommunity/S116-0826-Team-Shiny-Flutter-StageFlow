@@ -48,7 +48,7 @@ class ConflictSuccessScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Schedule updated successfully. Stage space and cast assignments are now synchronized and conflict-free.',
                 style: AppTypography.bodyLg,
                 textAlign: TextAlign.center,
@@ -61,9 +61,9 @@ class ConflictSuccessScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
+                      children: [
                         StatusChip(label: 'MAIN STAGE AUDITORIUM', type: ChipType.success),
                         Text('TODAY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                       ],

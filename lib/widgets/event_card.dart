@@ -48,9 +48,9 @@ class EventCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: badgeColor.withOpacity(0.1),
+                    color: badgeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: badgeColor.withOpacity(0.35), width: 1),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.35), width: 1),
                   ),
                   child: Text(
                     event.type.toUpperCase(),
@@ -85,7 +85,7 @@ class EventCard extends StatelessWidget {
                           onTap: onDelete,
                           borderRadius: BorderRadius.circular(4),
                           child: const Padding(
-                            padding: const EdgeInsets.all(4),
+                            padding: EdgeInsets.all(4),
                             child: Icon(
                               Icons.delete_outline,
                               size: 17,
@@ -101,9 +101,9 @@ class EventCard extends StatelessWidget {
             const SizedBox(height: 10),
 
             // Production Title
-            if (event.productionTitle != null && event.productionTitle!.isNotEmpty) ...[
+            if (event.productionTitle.isNotEmpty) ...[
               Text(
-                event.productionTitle!,
+                event.productionTitle,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -185,7 +185,7 @@ class EventCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

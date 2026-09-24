@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../app/theme/app_typography.dart';
-import '../../models/event.dart';
-import '../../repositories/stageflow_repository.dart';
-import '../../theme/app_theme.dart';
-import '../../utils/date_formatter.dart';
-import '../../utils/validators.dart';
+import 'package:stagesync/theme/app_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/event_model.dart';
+import '../../models/production_model.dart';
+import '../../theme/app_colors.dart';
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/events_viewmodel.dart';
+import '../../viewmodels/productions_viewmodel.dart';
+import '../../viewmodels/roles_viewmodel.dart';
+import '../../widgets/dialogs/venue_conflict_dialog.dart';
 
 class CreateEventScreen extends StatefulWidget {
-  const CreateEventScreen({super.key});
+  final String? initialProductionId;
+
+  const CreateEventScreen({
+    super.key,
+    this.initialProductionId,
+  });
 
   @override
   State<CreateEventScreen> createState() => _CreateEventScreenState();
@@ -16,70 +27,78 @@ class CreateEventScreen extends StatefulWidget {
 
 class _CreateEventScreenState extends State<CreateEventScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _notesController = TextEditingController();
-  final _repository = MockStageFlowRepository();
+  final _notesController = TextEditingController(
+    text: 'Act 1 blocking rehearsal and script walk-through.',
+  );
+  final _venueController = TextEditingController(text: 'Main Auditorium');
 
   String _selectedType = 'Rehearsal';
-  String _selectedProduction = 'Hamlet';
-  String _selectedVenue = 'Main Stage';
-  DateTime _eventDate = DateTime.now();
-  TimeOfDay _startTime = const TimeOfDay(hour: 14, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 16, minute: 0);
-  bool _isSaving = false;
+  String? _selectedProductionId;
+  DateTime _eventDate = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _startTime = const TimeOfDay(hour: 18, minute: 0);
+  TimeOfDay _endTime = const TimeOfDay(hour: 20, minute: 0);
 
-  void _saveEvent() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isSaving = true;
-      });
+  final Set<String> _selectedCastIds = <String>{};
+  bool _isSubmitting = false;
 
-      final start = DateTime(_eventDate.year, _eventDate.month, _eventDate.day, _startTime.hour, _startTime.minute);
-      final end = DateTime(_eventDate.year, _eventDate.month, _eventDate.day, _endTime.hour, _endTime.minute);
+  final List<Map<String, dynamic>> _eventTypes = [
+    {'label': 'Rehearsal', 'icon': Icons.theater_comedy},
+    {'label': 'Performance', 'icon': Icons.local_activity},
+    {'label': 'Audition', 'icon': Icons.how_to_reg},
+    {'label': 'Prod Meeting', 'icon': Icons.groups},
+  ];
 
-      final newEvent = ScheduleEvent(
-        id: 'evt-${DateTime.now().millisecondsSinceEpoch}',
-        title: _titleController.text,
-        productionId: _selectedProduction.toLowerCase(),
-        productionTitle: _selectedProduction,
-        type: _selectedType,
-        startTime: start,
-        endTime: end,
-        venueName: _selectedVenue,
-        requiredRoles: ['Lead Cast', 'Stage Manager'],
-        requiredCast: ['Eleanor Vance', 'Arjun Patel'],
-        hasConflict: false,
-        status: 'Confirmed',
-        notes: _notesController.text,
-      );
+  final List<String> _predefinedVenues = [
+    'Main Auditorium',
+    'Black Box Rehearsal Hall A',
+    'Studio 3 (Upstairs)',
+    'Green Room Annex',
+    'Stage Left Practice Room',
+  ];
 
-      await _repository.addEvent(newEvent);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('New event successfully added to schedule!'),
-            backgroundColor: AppTheme.emerald,
-          ),
-        );
-        context.go('/schedule');
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authVm = context.read<AuthViewModel>();
+      final prodVm = context.read<ProductionsViewModel>();
+      final uid = authVm.currentUser?.uid;
+      if (prodVm.productions.isEmpty && uid != null && uid.isNotEmpty) {
+        prodVm.startWatching(uid);
       }
-    }
+
+      final initialId = widget.initialProductionId ??
+          (prodVm.productions.isNotEmpty ? prodVm.productions.first.id : null);
+
+      if (initialId != null) {
+        setState(() {
+          _selectedProductionId = initialId;
+        });
+        context.read<RolesViewModel>().startWatching(initialId);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    _venueController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _eventDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.burgundy,
+              primary: AppColors.primaryCrimson,
               onPrimary: Colors.white,
-              onSurface: AppTheme.charcoal,
+              onSurface: AppColors.onSurface,
             ),
           ),
           child: child!,
@@ -99,7 +118,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.burgundy,
+              primary: AppColors.primaryCrimson,
             ),
           ),
           child: child!,
@@ -119,7 +138,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.burgundy,
+              primary: AppColors.primaryCrimson,
             ),
           ),
           child: child!,
@@ -131,224 +150,843 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _notesController.dispose();
-    super.dispose();
+  void _onProductionChanged(String? newId) {
+    if (newId != null && newId != _selectedProductionId) {
+      setState(() {
+        _selectedProductionId = newId;
+        _selectedCastIds.clear();
+      });
+      context.read<RolesViewModel>().startWatching(newId);
+    }
+  }
+
+  Future<void> _handleCreateEvent() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedProductionId == null || _selectedProductionId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a production.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    final startDateTime = DateTime(
+      _eventDate.year,
+      _eventDate.month,
+      _eventDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+
+    final endDateTime = DateTime(
+      _eventDate.year,
+      _eventDate.month,
+      _eventDate.day,
+      _endTime.hour,
+      _endTime.minute,
+    );
+
+    if (!startDateTime.isBefore(endDateTime)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Start time must be strictly before end time.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    final venue = _venueController.text.trim();
+    if (venue.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please specify or select a venue.'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final newEvent = EventModel(
+      date: DateTime(_eventDate.year, _eventDate.month, _eventDate.day),
+      start: startDateTime,
+      end: endDateTime,
+      type: _selectedType,
+      venue: venue,
+      venueKey: EventModel.normalizeVenue(venue),
+      castIds: _selectedCastIds.toList(),
+      notes: _notesController.text.trim(),
+    );
+
+    final eventsVm = context.read<EventsViewModel>();
+    final success = await eventsVm.createEvent(_selectedProductionId!, newEvent);
+
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(child: Text('Event call published successfully.')),
+            ],
+          ),
+          backgroundColor: AppColors.successGreen,
+        ),
+      );
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/schedule');
+      }
+    } else {
+      if (eventsVm.conflictMessage != null) {
+        VenueConflictDialog.show(
+          context,
+          venueName: venue,
+          conflictDetails: eventsVm.conflictMessage!,
+          conflictingEventTitle: 'Overlapping Scheduled Event',
+          conflictingEventTime:
+              '${DateFormat('h:mm a').format(startDateTime)} - ${DateFormat('h:mm a').format(endDateTime)}',
+          onEditEvent: () {
+            // Stay on form to allow editing
+          },
+        );
+      } else if (eventsVm.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(eventsVm.errorMessage!),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputBg = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF334155) : AppColors.borderHairline;
+    final textCol = isDark ? const Color(0xFFFAF8FF) : AppColors.onSurface;
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final productionsVm = context.watch<ProductionsViewModel>();
+    final rolesVm = context.watch<RolesViewModel>();
+
+    // Select production fallback if not set
+    final effectiveProdId = _selectedProductionId ??
+        (productionsVm.productions.isNotEmpty ? productionsVm.productions.first.id : null);
+    if (_selectedProductionId == null && effectiveProdId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedProductionId == null) {
+          setState(() => _selectedProductionId = effectiveProdId);
+          context.read<RolesViewModel>().startWatching(effectiveProdId);
+        }
+      });
+    }
+
+    ProductionModel? currentProd;
+    try {
+      currentProd = productionsVm.productions.firstWhere(
+        (p) => p.id == effectiveProdId,
+      );
+    } catch (_) {
+      currentProd = productionsVm.productions.isNotEmpty
+          ? productionsVm.productions.first
+          : null;
+    }
+
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Schedule Call & Cue'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: _isSaving
-                ? const Center(child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                ))
-                : TextButton(
-                    onPressed: _saveEvent,
-                    child: const Text(
-                      'Save',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/schedule');
+            }
+          },
+        ),
+        title: Text(
+          'Production Operations',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
-        ],
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Call Title',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+              // Screen Title & Context Bar
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'PRODUCTION OPERATIONS',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                      color: subTextCol,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryCrimson.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primaryCrimson,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Drafting Call',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryCrimson,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _titleController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Act 2 Scene 1 Rehearsal',
-                  prefixIcon: Icon(Icons.title),
+              const SizedBox(height: 6),
+              Text(
+                'Create Event',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: textCol,
                 ),
-                validator: (v) => Validators.required(v, 'Please enter event title'),
               ),
-              const SizedBox(height: 20),
-
-              // Event Type Choice Chips
+              const SizedBox(height: 4),
               Text(
-                'Call Type',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                'Log an official rehearsal call or callboard event for the company ledger.',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: subTextCol,
+                ),
               ),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+              const SizedBox(height: 16),
+
+              // Production Visual Banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFF223042),
+                      Color(0xFF640023),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTypeChip('Rehearsal'),
-                    const SizedBox(width: 8),
-                    _buildTypeChip('Tech Call'),
-                    const SizedBox(width: 8),
-                    _buildTypeChip('Fitting'),
-                    const SizedBox(width: 8),
-                    _buildTypeChip('Audition'),
-                    const SizedBox(width: 8),
-                    _buildTypeChip('Performance'),
+                    Text(
+                      'ACTIVE REPERTORY',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: AppColors.secondaryWarmAmber,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currentProd != null
+                          ? '${currentProd.title} (${DateFormat('MMM d').format(currentProd.startDate)} – ${DateFormat('MMM d').format(currentProd.endDate)})'
+                          : 'Select an active production below',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Production selector
-              DropdownButtonFormField<String>(
-                value: _selectedProduction,
-                decoration: const InputDecoration(
-                  labelText: 'Production',
-                  prefixIcon: Icon(Icons.theater_comedy),
+              // Event Type Selector (Segmented 2x2 Flow)
+              Text(
+                'Event Type',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: textCol,
                 ),
-                items: ['Hamlet', 'Macbeth', 'The Tempest', 'Romeo & Juliet'].map((p) {
-                  return DropdownMenuItem(value: p, child: Text(p));
+              ),
+              const SizedBox(height: 8),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 2.8,
+                children: _eventTypes.map((t) {
+                  final isSelected = _selectedType == t['label'];
+                  return InkWell(
+                    onTap: () => setState(() => _selectedType = t['label'] as String),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primaryCrimson
+                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primaryCrimson : borderCol,
+                          width: 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            t['icon'] as IconData,
+                            size: 18,
+                            color: isSelected ? Colors.white : subTextCol,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              t['label'] as String,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected ? Colors.white : textCol,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedProduction = val);
-                },
               ),
               const SizedBox(height: 20),
 
-              // Date Picker
+              // Production Selection Dropdown Field
+              Text(
+                'Production',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: textCol,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (productionsVm.productions.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: inputBg,
+                    border: Border.all(color: borderCol),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 18, color: AppColors.secondaryWarmAmber),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'No productions found. Create a production first.',
+                          style: GoogleFonts.inter(fontSize: 13, color: subTextCol),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedProductionId,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.theater_comedy, size: 20),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: productionsVm.productions.map((p) {
+                    return DropdownMenuItem<String>(
+                      value: p.id,
+                      child: Text(
+                        '${p.title} (${DateFormat('MMM d').format(p.startDate)} – ${DateFormat('MMM d').format(p.endDate)})',
+                        style: GoogleFonts.inter(fontSize: 13, color: textCol),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _onProductionChanged,
+                ),
+              const SizedBox(height: 20),
+
+              // Date Selection
+              Text(
+                'Date',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: textCol,
+                ),
+              ),
+              const SizedBox(height: 8),
               InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(12),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Date',
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: inputBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: borderCol),
                   ),
-                  child: Text(
-                    DateFormatter.formatFullDate(_eventDate),
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 20, color: AppColors.primaryCrimson),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          DateFormat('MMMM d, yyyy').format(_eventDate),
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: textCol,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.edit_calendar, size: 18, color: subTextCol),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Time Range Row
+              // Time Row (Two Columns)
               Row(
                 children: [
                   Expanded(
-                    child: InkWell(
-                      onTap: _pickStartTime,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Start Time',
-                          prefixIcon: Icon(Icons.access_time),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Start Time',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: textCol,
+                          ),
                         ),
-                        child: Text(
-                          _startTime.format(context),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _pickStartTime,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: inputBg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderCol),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.schedule, size: 18, color: subTextCol),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _startTime.format(context),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: textCol,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: InkWell(
-                      onTap: _pickEndTime,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'End Time',
-                          prefixIcon: Icon(Icons.access_time_filled),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'End Time',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: textCol,
+                          ),
                         ),
-                        child: Text(
-                          _endTime.format(context),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _pickEndTime,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: inputBg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderCol),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.update, size: 18, color: subTextCol),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _endTime.format(context),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: textCol,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
 
-              // Venue Dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedVenue,
-                decoration: const InputDecoration(
-                  labelText: 'Venue / Room',
-                  prefixIcon: Icon(Icons.location_on_outlined),
+              // Venue Selector with Availability Badge
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Venue',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textCol,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.successContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.successGreen,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Available',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.successGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Venue input / dropdown
+              TextFormField(
+                controller: _venueController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.stadium, size: 20),
+                  hintText: 'e.g. Main Auditorium',
+                  suffixIcon: PopupMenuButton<String>(
+                    icon: const Icon(Icons.unfold_more),
+                    onSelected: (val) {
+                      setState(() => _venueController.text = val);
+                    },
+                    itemBuilder: (ctx) => _predefinedVenues.map((v) {
+                      return PopupMenuItem<String>(
+                        value: v,
+                        child: Text(v, style: GoogleFonts.inter(fontSize: 13)),
+                      );
+                    }).toList(),
+                  ),
                 ),
-                items: ['Main Stage', 'Studio Theatre', 'Rehearsal Room A', 'Rehearsal Room B'].map((v) {
-                  return DropdownMenuItem(value: v, child: Text(v));
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedVenue = val);
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Venue is required';
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 20),
 
-              // Notes Input
+              // Called Cast Members Multi-select Chips
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Called Cast Members (${_selectedCastIds.length})',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textCol,
+                    ),
+                  ),
+                  Text(
+                    'Production Roster',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: subTextCol,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (rolesVm.castUsers.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: inputBg,
+                    border: Border.all(color: borderCol),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.people_outline, size: 20, color: subTextCol),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'No cast members registered yet for this production.',
+                          style: GoogleFonts.inter(fontSize: 12, color: subTextCol),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ...rolesVm.castUsers.map((castUser) {
+                      final isSelected = _selectedCastIds.contains(castUser.uid);
+                      return FilterChip(
+                        selected: isSelected,
+                        avatar: CircleAvatar(
+                          radius: 12,
+                          backgroundColor: isSelected
+                              ? AppColors.primaryCrimson
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                          child: Text(
+                            castUser.name.isNotEmpty
+                                ? castUser.name[0].toUpperCase()
+                                : '?',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : textCol,
+                            ),
+                          ),
+                        ),
+                        label: Text(
+                          castUser.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isSelected ? AppColors.primaryCrimson : textCol,
+                          ),
+                        ),
+                        selectedColor: AppColors.primaryCrimson.withValues(alpha: 0.12),
+                        checkmarkColor: AppColors.primaryCrimson,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedCastIds.add(castUser.uid ?? '');
+                            } else {
+                              _selectedCastIds.remove(castUser.uid ?? '');
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              const SizedBox(height: 20),
+
+              // Rehearsal & Callboard Notes
+              Text(
+                'Rehearsal & Callboard Notes',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: textCol,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _notesController,
                 maxLines: 3,
                 decoration: const InputDecoration(
-                  labelText: 'Technical / Script Notes',
-                  hintText: 'Specific props, lighting setups, or script pages...',
-                  alignLabelWithHint: true,
+                  hintText: 'Specify scenes, call requirements, or blocking instructions...',
                 ),
               ),
-              const SizedBox(height: 32),
-              
+              const SizedBox(height: 4),
+              Text(
+                'Visible to company stage management and summoned cast.',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: subTextCol,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Immediate Callboard Sync Helper Mini-Card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderCol),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryCrimson.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_active,
+                        size: 18,
+                        color: AppColors.primaryCrimson,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Immediate Callboard Sync',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: textCol,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Creating this call will notify summoned cast and update their personal rehearsal calendar.',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: subTextCol,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Primary Action & Cancel Buttons
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.burgundy,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isSubmitting ? null : _handleCreateEvent,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.add_task, size: 20),
+                  label: Text(
+                    _isSubmitting ? 'Creating Call...' : 'Create Event',
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
-                  onPressed: _isSaving ? null : _saveEvent,
-                  child: const Text('Save & Publish Call', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: TextButton(
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/schedule');
+                    }
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: subTextCol,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTypeChip(String type) {
-    final isSelected = _selectedType == type;
-    final theme = Theme.of(context);
-    return ChoiceChip(
-      label: Text(type),
-      selected: isSelected,
-      onSelected: (_) => setState(() => _selectedType = type),
-      selectedColor: theme.colorScheme.primary.withOpacity(0.12),
-      labelStyle: TextStyle(
-        fontSize: 13,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-      ),
-      side: BorderSide(
-        color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
-        width: 1,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
     );
   }
 }

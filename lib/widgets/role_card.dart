@@ -33,7 +33,7 @@ class RoleCard extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: isAssigned
-                    ? theme.colorScheme.primary.withOpacity(0.1)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
                     : theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -68,8 +68,8 @@ class RoleCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: isAssigned
-                              ? const Color(0xFF059669).withOpacity(0.1)
-                              : const Color(0xFFD97706).withOpacity(0.1),
+                              ? const Color(0xFF059669).withValues(alpha: 0.1)
+                              : const Color(0xFFD97706).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(

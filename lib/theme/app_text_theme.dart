@@ -1,108 +1,110 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:stagesync/theme/app_fonts.dart';
 import 'package:stagesync/theme/app_colors.dart';
 
-/// StageSync Material 3 typography configuration using Google Fonts (Inter).
-///
-/// **Font Choice Justification:**
-/// - **Inter**: Selected for its exceptional clarity, neutral geometric structure,
-///   and tall x-height. In busy backstage environments and dense production schedules,
-///   actors and stage managers need rapid, unambiguous reading of call times,
-///   scene numbers, cue notes, and role assignments without distracting decorative flourishes.
+/// StageSync typography using Plus Jakarta Sans for headers & Inter for body/tabular data.
 abstract class AppTextTheme {
-  /// Custom Material 3 TextTheme built with Inter.
+  /// Tabular figures feature for numeric alignment in calls and timelines
+  static const List<FontFeature> tabularFigures = [FontFeature.tabularFigures()];
+
   static TextTheme get textTheme {
-    final baseTextTheme = ThemeData.light().textTheme;
-    return GoogleFonts.interTextTheme(baseTextTheme).copyWith(
-      displayLarge: GoogleFonts.inter(
-        fontSize: 57,
+    return TextTheme(
+      // Headlines & Display (Plus Jakarta Sans)
+      displayLarge: GoogleFonts.plusJakartaSans(
+        fontSize: 34,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
+        color: AppColors.onSurface,
+      ),
+      displayMedium: GoogleFonts.plusJakartaSans(
+        fontSize: 30,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.25,
-        color: AppColors.textDark,
+        color: AppColors.onSurface,
       ),
-      displayMedium: GoogleFonts.inter(
-        fontSize: 45,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-        color: AppColors.textDark,
-      ),
-      displaySmall: GoogleFonts.inter(
-        fontSize: 36,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-        color: AppColors.textDark,
-      ),
-      headlineLarge: GoogleFonts.inter(
-        fontSize: 32,
+      displaySmall: GoogleFonts.plusJakartaSans(
+        fontSize: 26,
         fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-        color: AppColors.textDark,
+        letterSpacing: -0.2,
+        color: AppColors.onSurface,
       ),
-      headlineMedium: GoogleFonts.inter(
-        fontSize: 28,
+      headlineLarge: GoogleFonts.plusJakartaSans(
+        fontSize: 30,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.25,
+        color: AppColors.onSurface,
+      ),
+      headlineMedium: GoogleFonts.plusJakartaSans(
+        fontSize: 22,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-        color: AppColors.textDark,
+        letterSpacing: -0.2,
+        color: AppColors.onSurface,
       ),
-      headlineSmall: GoogleFonts.inter(
-        fontSize: 24,
+      headlineSmall: GoogleFonts.plusJakartaSans(
+        fontSize: 18,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-        color: AppColors.textDark,
+        letterSpacing: -0.1,
+        color: AppColors.onSurface,
       ),
-      titleLarge: GoogleFonts.inter(
+
+      // Titles (Inter / Plus Jakarta Sans)
+      titleLarge: GoogleFonts.plusJakartaSans(
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-        color: AppColors.textDark,
+        letterSpacing: -0.15,
+        color: AppColors.onSurface,
       ),
       titleMedium: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.15,
-        color: AppColors.textDark,
+        letterSpacing: -0.1,
+        color: AppColors.onSurface,
       ),
       titleSmall: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.1,
-        color: AppColors.textDark,
+        letterSpacing: 0,
+        color: AppColors.onSurface,
       ),
+
+      // Body (Inter)
       bodyLarge: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.5,
-        color: AppColors.textDark,
+        letterSpacing: 0.15,
+        color: AppColors.onSurface,
       ),
       bodyMedium: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.25,
-        color: AppColors.textDark,
+        letterSpacing: 0.1,
+        color: AppColors.onSurface,
       ),
       bodySmall: GoogleFonts.inter(
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.4,
+        letterSpacing: 0.1,
         color: AppColors.textMuted,
       ),
+
+      // Labels & Metadata (Inter)
       labelLarge: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
-        color: AppColors.textDark,
+        color: AppColors.onSurface,
       ),
       labelMedium: GoogleFonts.inter(
         fontSize: 12,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 0.5,
-        color: AppColors.textMuted,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.2,
+        color: AppColors.onSurfaceVariant,
       ),
       labelSmall: GoogleFonts.inter(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        letterSpacing: 0.5,
-        color: AppColors.textSubtle,
+        letterSpacing: 0.3,
+        color: AppColors.textMuted,
       ),
     );
   }

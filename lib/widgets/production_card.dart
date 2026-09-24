@@ -81,9 +81,9 @@ class ProductionCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (production.imageUrl != null && production.imageUrl!.isNotEmpty)
+                  if (production.imageUrl.isNotEmpty)
                     Image.network(
-                      production.imageUrl!,
+                      production.imageUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
                       loadingBuilder: (context, child, loadingProgress) {
@@ -104,8 +104,8 @@ class ProductionCard extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withOpacity(0.05),
-                            Colors.black.withOpacity(0.72),
+                            Colors.black.withValues(alpha: 0.05),
+                            Colors.black.withValues(alpha: 0.72),
                           ],
                         ),
                       ),
@@ -119,11 +119,11 @@ class ProductionCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.9),
+                        color: statusColor.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -166,7 +166,7 @@ class ProductionCard extends StatelessWidget {
                       right: 6,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.35),
+                          color: Colors.black.withValues(alpha: 0.35),
                           shape: BoxShape.circle,
                         ),
                         child: PopupMenuButton<String>(
@@ -314,7 +314,7 @@ class ProductionCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppTheme.burgundy.withOpacity(0.08),
+                              color: AppTheme.burgundy.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(

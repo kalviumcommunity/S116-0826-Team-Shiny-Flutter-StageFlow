@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:stagesync/theme/app_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../models/production.dart';
-import '../../models/event.dart';
-import '../../models/conflict.dart';
-import '../../repositories/stageflow_repository.dart';
+import '../../models/production_model.dart';
+import '../../theme/app_colors.dart';
 import '../../viewmodels/auth_viewmodel.dart';
-import '../../widgets/event_card.dart';
-import '../../widgets/production_card.dart';
-import '../../widgets/empty_state.dart';
-import '../../utils/date_utils.dart';
+import '../../viewmodels/productions_viewmodel.dart';
+import '../../viewmodels/schedule_viewmodel.dart';
+import '../../widgets/common/stage_kpi_card.dart';
+import '../../widgets/common/timeline_event_card.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -19,95 +19,97 @@ class HomeDashboardScreen extends StatefulWidget {
 }
 
 class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
-  late final MockStageFlowRepository _repository;
-  
-  bool _isLoading = true;
-  Production? _activeProduction;
-  List<ScheduleConflict> _conflicts = [];
-  List<ScheduleEvent> _todayEvents = [];
+  String? _lastWatchedUid;
 
   @override
-  void initState() {
-    super.initState();
-    _repository = MockStageFlowRepository();
-    _loadDashboardData();
-  }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.watch<AuthViewModel>();
+    final uid = auth.currentUser?.uid;
 
-  Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final productions = await _repository.getProductions();
-      if (productions.isNotEmpty) {
-        _activeProduction = productions.first;
-      }
-
-      final events = await _repository.getEvents();
-      _todayEvents = events.where((e) {
-        final now = DateTime.now();
-        return e.startTime.year == now.year &&
-            e.startTime.month == now.month &&
-            e.startTime.day == now.day;
-      }).toList();
-      _todayEvents.sort((a, b) => a.startTime.compareTo(b.startTime));
-
-      final conflicts = await _repository.getConflicts();
-      _conflicts = conflicts.where((c) => !c.isResolved).toList();
-    } catch (e) {
-      debugPrint('Error loading dashboard: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    if (uid != null && uid != _lastWatchedUid) {
+      _lastWatchedUid = uid;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        try {
+          final prodVm = context.read<ProductionsViewModel?>();
+          prodVm?.startWatching(uid);
+          final schedVm = context.read<ScheduleViewModel?>();
+          schedVm?.startWatching(uid);
+        } catch (_) {
+          // Safe when running in isolated test widget tree
+        }
+      });
     }
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final auth = context.watch<AuthViewModel>();
+    ProductionsViewModel? prodVm;
+    ScheduleViewModel? schedVm;
+
+    try {
+      prodVm = context.watch<ProductionsViewModel?>();
+      schedVm = context.watch<ScheduleViewModel?>();
+    } catch (_) {}
+
     final user = auth.currentUser;
-    final isDirector = user?.role.toLowerCase() == 'director';
-    final safeName = user?.name.split(' ').first ?? 'Guest';
+    final userName = user?.name.split(' ').first ?? 'Director';
+
+    final productions = prodVm?.productions ?? <ProductionModel>[];
+    final scheduledItems = schedVm?.scheduledItems ?? <GlobalScheduleItem>[];
+
+    // Filter today's events
+    final now = DateTime.now();
+    final todayItems = scheduledItems.where((item) {
+      final d = item.event.date;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    }).toList();
+
+    // Calculate unique roster members across active productions
+    final allMemberIds = <String>{};
+    for (final prod in productions) {
+      allMemberIds.addAll(prod.memberIds);
+    }
+    final rosterCount = allMemberIds.isNotEmpty ? allMemberIds.length : (user != null ? 1 : 0);
+
+    final textCol = isDark ? const Color(0xFFFAF8FF) : AppColors.onSurface;
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : AppColors.canvasBase,
       appBar: AppBar(
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: AppColors.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.masks, color: theme.colorScheme.primary, size: 24),
+              child: const Icon(Icons.theater_comedy, size: 20, color: Colors.white),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'StageFlow',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+                  'StageSync',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryContainer,
                   ),
                 ),
                 Text(
-                  '${_getGreeting()}, $safeName',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  'Home',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: subTextCol,
                   ),
                 ),
               ],
@@ -116,47 +118,27 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: Stack(
-              children: [
-                Icon(Icons.notifications_outlined, color: theme.colorScheme.onSurface),
-                if (_conflicts.isNotEmpty)
-                  Positioned(
-                    right: 0,
-                    top: 2,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            icon: const Icon(Icons.notifications_none, size: 22),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Notifications: ${_conflicts.length} Critical Conflict(s) pending.')),
+                const SnackBar(content: Text('All production calls are up to date.')),
               );
             },
           ),
-          const SizedBox(width: 8),
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
-              onTap: () => context.push('/profile'),
+              onTap: () => context.go('/profile'),
               child: CircleAvatar(
                 radius: 16,
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-                child: user?.photoURL == null
+                backgroundColor: AppColors.primaryContainer,
+                backgroundImage: user?.photoURL != null && user!.photoURL!.isNotEmpty
+                    ? NetworkImage(user.photoURL!)
+                    : null,
+                child: (user?.photoURL == null || user!.photoURL!.isEmpty)
                     ? Text(
-                        safeName.isNotEmpty ? safeName[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                        (user?.name.isNotEmpty ?? false) ? user!.name[0].toUpperCase() : 'U',
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                       )
                     : null,
               ),
@@ -164,324 +146,476 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadDashboardData,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 30),
-                children: [
-                  // Next Call Banner
-                  if (_todayEvents.isNotEmpty) ...[
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: AppColors.primaryContainer,
+          onRefresh: () async {
+            if (_lastWatchedUid != null) {
+              prodVm?.startWatching(_lastWatchedUid!);
+              schedVm?.startWatching(_lastWatchedUid!);
+            }
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Ambient Greeting Banner
+                Row(
+                  children: [
                     Container(
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primary,
-                            theme.colorScheme.secondary,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.timer_outlined, color: Colors.white, size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Next Call',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${_todayEvents.first.title} at ${AppDateUtils.formatTime(_todayEvents.first.startTime)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.secondaryContainer,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ] else ...[
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Director Tools
-                  if (isDirector) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      child: Text(
-                        'Director Actions',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildQuickActionButton(
-                              theme: theme,
-                              icon: Icons.add_circle_outline,
-                              label: 'New Event',
-                              onTap: () => context.go('/schedule/create'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildQuickActionButton(
-                              theme: theme,
-                              icon: Icons.people_outline,
-                              label: 'Cast & Roles',
-                              onTap: () => context.push('/productions/${_activeProduction?.id}/roles'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Dashboard Metrics
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Text(
-                      'Overview',
-                      style: theme.textTheme.titleMedium?.copyWith(
+                    const SizedBox(width: 6),
+                    Text(
+                      'LIVE PRODUCTION DECK',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
+                        color: subTextCol,
+                        letterSpacing: 0.6,
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildMetricCard(
-                            theme: theme,
-                            icon: Icons.calendar_today_rounded,
-                            label: 'Rehearsals Today',
-                            value: _todayEvents.length.toString(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildMetricCard(
-                            theme: theme,
-                            icon: Icons.warning_amber_rounded,
-                            label: 'Conflicts to Resolve',
-                            value: _conflicts.length.toString(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildMetricCard(
-                            theme: theme,
-                            icon: Icons.theater_comedy,
-                            label: 'Active Productions',
-                            value: _activeProduction != null ? '1' : '0',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Active Production
-                  if (_activeProduction != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Active Production',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => context.go('/productions'),
-                            child: const Text('View All'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ProductionCard(
-                        production: _activeProduction!,
-                        onTap: () => context.go('/productions/${_activeProduction!.id}'),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                   ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Good day, $userName',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: textCol,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "Here's what's happening across your productions today.",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: subTextCol,
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-                  // Today's Calls
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // KPI Metrics Grid (3 Cards)
+                Row(
+                  children: [
+                    Expanded(
+                      child: StageKpiCard(
+                        icon: Icons.theater_comedy,
+                        tag: 'ACTIVE',
+                        tagColor: AppColors.primaryContainer,
+                        value: productions.length.toString(),
+                        label: 'Productions',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: StageKpiCard(
+                        icon: Icons.event_note,
+                        tag: 'TODAY',
+                        tagColor: AppColors.secondaryAmber,
+                        value: todayItems.length.toString(),
+                        label: 'Calls Today',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: StageKpiCard(
+                        icon: Icons.groups,
+                        tag: 'ROSTER',
+                        tagColor: AppColors.tertiarySlateLight,
+                        value: rosterCount.toString(),
+                        label: 'Cast Roster',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Upcoming Events Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
                       children: [
                         Text(
-                          'Today\'s Calls',
-                          style: theme.textTheme.titleMedium?.copyWith(
+                          'Upcoming Events',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 17,
                             fontWeight: FontWeight.w700,
+                            color: textCol,
                           ),
                         ),
-                        TextButton(
-                          onPressed: () => context.go('/schedule'),
-                          child: const Text('Full Schedule'),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF283044) : AppColors.surfaceHigh,
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          child: Text(
+                            'Today',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: subTextCol,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  if (_todayEvents.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: EmptyState(
-                        icon: Icons.event_available,
-                        title: 'Clear Schedule',
-                        subtitle: 'You have no calls scheduled for today. Enjoy the break!',
-                      ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _todayEvents.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () => context.go('/schedule/events/${_todayEvents[index].id}'),
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: EventCard(
-                              event: _todayEvents[index],
-                              isDirector: isDirector,
+                    TextButton(
+                      onPressed: () => context.go('/schedule'),
+                      child: Row(
+                        children: [
+                          Text(
+                            'View Schedule',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryContainer,
                             ),
                           ),
-                        );
-                      },
+                          const Icon(Icons.chevron_right, size: 16, color: AppColors.primaryContainer),
+                        ],
+                      ),
                     ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required ThemeData theme,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: theme.colorScheme.outline),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
+                  ],
                 ),
-              ),
+                const SizedBox(height: 6),
+
+                // Events List or Empty State
+                if (schedVm?.isLoading ?? false)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.primaryContainer),
+                    ),
+                  )
+                else if (todayItems.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF161F36) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF283044) : AppColors.borderHairline,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.event_available, size: 36, color: subTextCol.withValues(alpha: 0.6)),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No calls scheduled for today',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textCol,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Company calls and rehearsals will appear here automatically.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 12, color: subTextCol),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...todayItems.map(
+                    (item) => TimelineEventCard(
+                      event: item.event,
+                      productionTitle: item.productionTitle,
+                      onTap: () => context.go('/schedule'),
+                    ),
+                  ),
+
+                const SizedBox(height: 26),
+
+                // Your Productions Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Productions',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: textCol,
+                          ),
+                        ),
+                        Text(
+                          'Current active repertory & stage schedules',
+                          style: GoogleFonts.inter(fontSize: 12, color: subTextCol),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => context.go('/productions'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryContainer,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: Text(
+                        'New',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Productions List or Empty State
+                if (prodVm?.isLoading ?? false)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.primaryContainer),
+                    ),
+                  )
+                else if (productions.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF161F36) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF283044) : AppColors.borderHairline,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.theater_comedy, size: 40, color: subTextCol.withValues(alpha: 0.5)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No productions found',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: textCol,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Create or join a production to start scheduling rehearsals and calls.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 12, color: subTextCol),
+                        ),
+                        const SizedBox(height: 14),
+                        OutlinedButton(
+                          onPressed: () => context.go('/productions'),
+                          child: const Text('Go to Productions'),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...productions.map((prod) => _buildProductionHomeCard(prod, context, isDark)),
+
+                const SizedBox(height: 24),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMetricCard({
-    required ThemeData theme,
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+  Widget _buildProductionHomeCard(ProductionModel prod, BuildContext context, bool isDark) {
+    final cardBg = isDark ? const Color(0xFF161F36) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF283044) : AppColors.borderHairline;
+    final textCol = isDark ? const Color(0xFFFAF8FF) : AppColors.onSurface;
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final startFmt = DateFormat('MMM d').format(prod.startDate);
+    final endFmt = DateFormat('MMM d, y').format(prod.endDate);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: theme.colorScheme.outline),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderCol, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.primary),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: theme.colorScheme.onSurface,
+          // Banner / Header Area
+          Container(
+            height: 90,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF223042) : AppColors.surfaceHigh,
+              image: prod.imageURL != null && prod.imageURL!.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(prod.imageURL!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.black.withValues(alpha: 0.7),
+                  ],
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 14, color: AppColors.secondaryContainer),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$startFmt – $endFmt',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                    child: Text(
+                      'Active',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurfaceVariant,
+
+          // Content Area
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        prod.title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: textCol,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        if (prod.id != null) {
+                          context.push('/productions/${prod.id}');
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            'Manage',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryContainer,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.arrow_forward, size: 14, color: AppColors.primaryContainer),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (prod.description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    prod.description,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: subTextCol,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF223042) : AppColors.surfaceLow,
+                        borderRadius: BorderRadius.circular(9999),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.groups, size: 13, color: AppColors.primaryContainer),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${prod.memberIds.length} Members',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: textCol,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -489,5 +623,3 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 }
-
-

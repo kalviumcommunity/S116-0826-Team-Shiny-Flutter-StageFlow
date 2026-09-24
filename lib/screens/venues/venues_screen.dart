@@ -67,8 +67,8 @@ class _VenuesScreenState extends State<VenuesScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: const [
+                          const Row(
+                            children: [
                               Icon(Icons.warning_amber_rounded, color: AppColors.conflictRedText, size: 24),
                               SizedBox(width: 8),
                               Expanded(
