@@ -61,7 +61,7 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: textPrimaryLight),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -156,7 +156,7 @@ class AppTheme {
           );
         }),
       ),
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: burgundy,
         unselectedLabelColor: textSecondaryLight,
         indicatorColor: burgundy,
@@ -199,7 +199,7 @@ class AppTheme {
         ),
         iconTheme: IconThemeData(color: textPrimaryDark),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -253,7 +253,7 @@ class AppTheme {
         indicatorColor: burgundyLight.withOpacity(0.2),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       ),
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: burgundyLight,
         unselectedLabelColor: textSecondaryDark,
         indicatorColor: burgundyLight,
