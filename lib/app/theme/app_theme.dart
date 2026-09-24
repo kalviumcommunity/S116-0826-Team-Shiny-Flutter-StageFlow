@@ -72,7 +72,7 @@ class AppTheme {
         unselectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
         elevation: 8,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.lightSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -180,7 +180,7 @@ class AppTheme {
         unselectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
         elevation: 8,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
