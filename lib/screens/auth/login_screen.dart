@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stagesync/theme/app_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/validators.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -103,24 +102,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             onPressed: () async {
               final email = resetController.text.trim();
               if (email.isEmpty) return;
-              try {
-                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-                if (mounted) {
+              final authVm = context.read<AuthViewModel>();
+              final success = await authVm.sendPasswordResetEmail(email);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+              }
+              if (mounted) {
+                if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Password reset email sent. Please check your inbox.'),
                       backgroundColor: AppColors.successGreen,
                     ),
                   );
-                }
-              } catch (e) {
-                if (mounted) {
+                } else if (authVm.errorMessage != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+                      content: Text(authVm.errorMessage!),
                       backgroundColor: AppColors.conflictRed,
                     ),
                   );
@@ -560,8 +558,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     const SizedBox(height: 24),
 
                     // Registration Link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           "Don't have an account?",

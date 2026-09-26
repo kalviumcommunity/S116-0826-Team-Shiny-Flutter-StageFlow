@@ -58,6 +58,21 @@ class AuthService {
     }
   }
 
+  Future<bool> sendPasswordResetEmail(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) {
+      throw AuthException('Please enter an email address.');
+    }
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: trimmed);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      throw AuthException('Failed to send password reset email. Please try again.');
+    }
+  }
+
   String _mapFirebaseAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':

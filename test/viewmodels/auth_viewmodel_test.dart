@@ -406,4 +406,91 @@ void main() {
       viewModel.dispose();
     });
   });
+
+  group('AuthViewModel Password Reset Tests', () {
+    test('sendPasswordResetEmail succeeds and clears error state', () async {
+      when(() => mockAuthService.sendPasswordResetEmail('director@example.com'))
+          .thenAnswer((_) async => true);
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+
+      final success =
+          await viewModel.sendPasswordResetEmail('director@example.com');
+
+      expect(success, isTrue);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, isNull);
+
+      verify(() =>
+              mockAuthService.sendPasswordResetEmail('director@example.com'))
+          .called(1);
+      viewModel.dispose();
+    });
+
+    test('sendPasswordResetEmail returns false and sets errorMessage for empty email',
+        () async {
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+      authStateController.add(null);
+      await pumpEventQueue();
+
+      final success = await viewModel.sendPasswordResetEmail('   ');
+
+      expect(success, isFalse);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage, 'Please enter an email address.');
+
+      verifyNever(() => mockAuthService.sendPasswordResetEmail(any()));
+      viewModel.dispose();
+    });
+
+    test('sendPasswordResetEmail handles AuthException from service and sets errorMessage',
+        () async {
+      when(() => mockAuthService.sendPasswordResetEmail('missing@example.com'))
+          .thenThrow(AuthException('No account was found for that email.'));
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+      authStateController.add(null);
+      await pumpEventQueue();
+
+      final success =
+          await viewModel.sendPasswordResetEmail('missing@example.com');
+
+      expect(success, isFalse);
+      expect(viewModel.isLoading, isFalse);
+      expect(
+          viewModel.errorMessage, 'No account was found for that email.');
+      viewModel.dispose();
+    });
+
+    test('sendPasswordResetEmail handles unexpected exception gracefully',
+        () async {
+      when(() => mockAuthService.sendPasswordResetEmail('error@example.com'))
+          .thenThrow(Exception('Network timeout'));
+
+      final viewModel = AuthViewModel(
+        authService: mockAuthService,
+        userService: mockUserService,
+      );
+      authStateController.add(null);
+      await pumpEventQueue();
+
+      final success =
+          await viewModel.sendPasswordResetEmail('error@example.com');
+
+      expect(success, isFalse);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.errorMessage,
+          'Unable to send password reset email. Please try again.');
+      viewModel.dispose();
+    });
+  });
 }

@@ -6,6 +6,7 @@ import '../services/event_service.dart';
 import '../services/production_service.dart';
 import '../services/role_service.dart';
 import '../services/storage_service.dart';
+import '../services/uninitialized_services.dart';
 import '../services/user_service.dart';
 import '../viewmodels/auditions_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -30,68 +31,79 @@ class StageFlowApp extends StatelessWidget {
         builder: (context) {
           final themeNotifier = context.watch<ThemeNotifier>();
 
-          Widget app = Builder(
-            builder: (context) {
-              final authViewModel = isFirebaseInitialized
-                  ? context.read<AuthViewModel>()
-                  : null;
+          final AuthService authService = isFirebaseInitialized
+              ? AuthService()
+              : UninitializedAuthService();
+          final UserService userService = isFirebaseInitialized
+              ? UserService()
+              : UninitializedUserService();
+          final ProductionService productionService = isFirebaseInitialized
+              ? ProductionService()
+              : UninitializedProductionService();
+          final StorageService storageService = isFirebaseInitialized
+              ? StorageService()
+              : UninitializedStorageService();
+          final EventService eventService = isFirebaseInitialized
+              ? EventService()
+              : UninitializedEventService();
+          final RoleService roleService = isFirebaseInitialized
+              ? RoleService()
+              : UninitializedRoleService();
+          final AuditionService auditionService = isFirebaseInitialized
+              ? AuditionService()
+              : UninitializedAuditionService();
 
-              return MaterialApp.router(
-                title: 'StageSync',
-                debugShowCheckedModeBanner: false,
-                theme: AppTheme.lightTheme,
-                darkTheme: AppTheme.darkTheme,
-                themeMode: themeNotifier.themeMode,
-                routerConfig: AppRouter.createRouter(authViewModel),
-              );
-            },
+          return MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthViewModel>(
+                create: (_) => AuthViewModel(
+                  authService: authService,
+                  userService: userService,
+                ),
+              ),
+              ChangeNotifierProvider<ProductionsViewModel>(
+                create: (_) => ProductionsViewModel(
+                  productionService: productionService,
+                  storageService: storageService,
+                ),
+              ),
+              ChangeNotifierProvider<ScheduleViewModel>(
+                create: (_) => ScheduleViewModel(
+                  productionService: productionService,
+                  eventService: eventService,
+                ),
+              ),
+              ChangeNotifierProvider<EventsViewModel>(
+                create: (_) => EventsViewModel(
+                  eventService: eventService,
+                ),
+              ),
+              ChangeNotifierProvider<RolesViewModel>(
+                create: (_) => RolesViewModel(
+                  roleService: roleService,
+                ),
+              ),
+              ChangeNotifierProvider<AuditionsViewModel>(
+                create: (_) => AuditionsViewModel(
+                  auditionService: auditionService,
+                ),
+              ),
+            ],
+            child: Builder(
+              builder: (context) {
+                final authViewModel = context.read<AuthViewModel>();
+
+                return MaterialApp.router(
+                  title: 'StageSync',
+                  debugShowCheckedModeBanner: false,
+                  theme: AppTheme.lightTheme,
+                  darkTheme: AppTheme.darkTheme,
+                  themeMode: themeNotifier.themeMode,
+                  routerConfig: AppRouter.createRouter(authViewModel),
+                );
+              },
+            ),
           );
-
-          if (isFirebaseInitialized) {
-            final productionService = ProductionService();
-            final eventService = EventService();
-
-            app = MultiProvider(
-              providers: [
-                ChangeNotifierProvider<AuthViewModel>(
-                  create: (_) => AuthViewModel(
-                    authService: AuthService(),
-                    userService: UserService(),
-                  ),
-                ),
-                ChangeNotifierProvider<ProductionsViewModel>(
-                  create: (_) => ProductionsViewModel(
-                    productionService: productionService,
-                    storageService: StorageService(),
-                  ),
-                ),
-                ChangeNotifierProvider<ScheduleViewModel>(
-                  create: (_) => ScheduleViewModel(
-                    productionService: productionService,
-                    eventService: eventService,
-                  ),
-                ),
-                ChangeNotifierProvider<EventsViewModel>(
-                  create: (_) => EventsViewModel(
-                    eventService: eventService,
-                  ),
-                ),
-                ChangeNotifierProvider<RolesViewModel>(
-                  create: (_) => RolesViewModel(
-                    roleService: RoleService(),
-                  ),
-                ),
-                ChangeNotifierProvider<AuditionsViewModel>(
-                  create: (_) => AuditionsViewModel(
-                    auditionService: AuditionService(),
-                  ),
-                ),
-              ],
-              child: app,
-            );
-          }
-
-          return app;
         },
       ),
     );
