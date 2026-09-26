@@ -4,20 +4,14 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../screens/auditions/auditions_screen.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/signup_screen.dart';
-import '../../screens/availability/availability_dashboard_screen.dart';
-import '../../screens/conflicts/conflict_success_screen.dart';
-import '../../screens/conflicts/resolve_conflict_screen.dart';
 import '../../screens/home/home_dashboard_screen.dart';
-import '../../screens/productions/cast_roles_screen.dart';
 import '../../screens/productions/production_details_screen.dart';
 import '../../screens/productions/productions_list_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/schedule/create_event_screen.dart';
-import '../../screens/schedule/event_details_screen.dart';
 import '../../screens/schedule/master_schedule_screen.dart';
 import '../../screens/splash/logo_screen.dart';
 import '../../screens/splash/splash_screen.dart';
-import '../../screens/venues/venues_screen.dart';
 import '../../widgets/navigation/main_bottom_nav.dart';
 
 class AppRouter {
@@ -32,7 +26,6 @@ class AppRouter {
       initialLocation: '/logo',
       refreshListenable: authViewModel,
       redirect: (context, state) {
-        // If Firebase is not active, allow all routes for UI testing
         if (authViewModel == null) return null;
 
         final isLoading = authViewModel.isLoading;
@@ -77,40 +70,51 @@ class AppRouter {
           path: '/signup',
           builder: (context, state) => const SignUpScreen(),
         ),
+
+        // Legacy conflict routes - superseded by VenueConflictDialog bottom sheet
         GoRoute(
           path: '/conflicts/resolve',
-          builder: (context, state) => const ResolveConflictScreen(),
+          redirect: (context, state) => '/schedule',
         ),
         GoRoute(
           path: '/conflicts/success',
-          builder: (context, state) => const ConflictSuccessScreen(),
+          redirect: (context, state) => '/schedule',
         ),
 
         // Secondary Detail Routes
         GoRoute(
           path: '/productions/:id',
+          redirect: (context, state) {
+            final id = state.pathParameters['id'];
+            if (id == null || id.trim().isEmpty) {
+              return '/productions';
+            }
+            return null;
+          },
           builder: (context, state) {
-            final id = state.pathParameters['id'] ?? 'hamlet-1';
+            final id = state.pathParameters['id']!;
             return ProductionDetailsScreen(productionId: id);
           },
         ),
+        // Legacy cast roles route - superseded by Roles tab in ProductionDetailsScreen
         GoRoute(
           path: '/productions/:id/cast',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? 'hamlet-1';
-            return CastRolesScreen(productionId: id);
+          redirect: (context, state) {
+            final id = state.pathParameters['id'];
+            if (id != null && id.trim().isNotEmpty) {
+              return '/productions/$id';
+            }
+            return '/productions';
           },
         ),
         GoRoute(
           path: '/schedule/create',
           builder: (context, state) => const CreateEventScreen(),
         ),
+        // Legacy event details route - superseded by Master Schedule timeline
         GoRoute(
           path: '/schedule/events/:id',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? 'evt-1';
-            return EventDetailsScreen(eventId: id);
-          },
+          redirect: (context, state) => '/schedule',
         ),
 
         // Shell Route for Bottom Navigation Tabs
@@ -136,13 +140,15 @@ class AppRouter {
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
             ),
+            // Legacy venues route - superseded by inline venue conflict detection
             GoRoute(
               path: '/venues',
-              builder: (context, state) => const VenuesScreen(),
+              redirect: (context, state) => '/schedule',
             ),
+            // Legacy availability route - superseded by cast roster management
             GoRoute(
               path: '/availability',
-              builder: (context, state) => const AvailabilityDashboardScreen(),
+              redirect: (context, state) => '/schedule',
             ),
             GoRoute(
               path: '/auditions',

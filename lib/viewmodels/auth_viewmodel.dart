@@ -174,6 +174,37 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> sendPasswordResetEmail(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) {
+      isLoading = false;
+      errorMessage = 'Please enter an email address.';
+      notifyListeners();
+      return false;
+    }
+
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.sendPasswordResetEmail(trimmed);
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } on AuthException catch (e) {
+      errorMessage = e.message;
+      isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      errorMessage = 'Unable to send password reset email. Please try again.';
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateProfile({
     String? name,
     String? photoURL,

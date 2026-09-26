@@ -112,14 +112,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Password reset instructions dispatched to $email.'),
-                  backgroundColor: AppColors.successGreen,
-                ),
-              );
+              final authVm = context.read<AuthViewModel>();
+              final messenger = ScaffoldMessenger.of(context);
+              final success = await authVm.sendPasswordResetEmail(email);
+              if (mounted) {
+                if (success) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Password reset instructions dispatched to $email.'),
+                      backgroundColor: AppColors.successGreen,
+                    ),
+                  );
+                } else if (authVm.errorMessage != null) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(authVm.errorMessage!),
+                      backgroundColor: AppColors.conflictRed,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Send Reset Link'),
           ),
